@@ -226,6 +226,41 @@ test('caricamento di una foto nel post', async () => {
   assert.equal(file.statusCode, 200);
 });
 
+async function postVideo(file: string, token: string) {
+  const { readFile } = await import('node:fs/promises');
+  const boundary = '----stlvideo';
+  const payload = Buffer.concat([
+    Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="body"\r\n\r\nIl mio video\r\n`),
+    Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="v.mp4"\r\nContent-Type: video/mp4\r\n\r\n`),
+    await readFile(file),
+    Buffer.from(`\r\n--${boundary}--\r\n`),
+  ]);
+  return app.inject({ method: 'POST', url: '/api/posts', payload, headers: { authorization: `Bearer ${token}`, 'content-type': `multipart/form-data; boundary=${boundary}` } });
+}
+
+test('video nel post: convertito, con copertina, massimo 2 minuti', async () => {
+  const { execFileSync } = await import('node:child_process');
+  const dir = '/tmp/stl-test-videos';
+  execFileSync('mkdir', ['-p', dir]);
+  execFileSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', 'testsrc=size=1080x1920:rate=30:duration=4', '-c:v', 'libx264', `${dir}/short.mp4`]);
+  execFileSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', 'color=c=black:size=160x120:rate=5:duration=125', '-c:v', 'libx264', `${dir}/long.mp4`]);
+
+  const ok = await postVideo(`${dir}/short.mp4`, anna);
+  assert.equal(ok.statusCode, 201);
+  const post = ok.json().post;
+  assert.equal(post.mediaType, 'video');
+  assert.equal(post.mediaDuration, 4);
+  assert.match(post.mediaUrl, /\.mp4$/);
+  assert.equal((await app.inject({ method: 'GET', url: post.mediaUrl })).statusCode, 200);
+  assert.equal((await app.inject({ method: 'GET', url: post.mediaPoster })).statusCode, 200);
+  const size = execFileSync('ffprobe', ['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=width,height', '-of', 'csv=p=0', `/tmp/stl-test-uploads/${post.mediaUrl.split('/').pop()}`]).toString().trim();
+  assert.equal(size, '720,1280', 'il video verticale viene ridotto a 720 px di larghezza');
+
+  const long = await postVideo(`${dir}/long.mp4`, anna);
+  assert.equal(long.statusCode, 400);
+  assert.match(long.json().error, /massimo è 2:00/);
+});
+
 test('solo il proprietario nomina amministratori', async () => {
   const me = await call('GET', '/api/me', admin);
   assert.equal(me.body.user.isOwner, true);

@@ -10,7 +10,11 @@ export const config = {
   databaseUrl: required('DATABASE_URL', 'postgres://stl:stl@localhost:5432/stl'),
   jwtSecret: required('JWT_SECRET', process.env.NODE_ENV === 'production' ? undefined : 'dev-secret-cambiami'),
   uploadDir: process.env.UPLOAD_DIR ?? './uploads',
-  maxUploadMb: Number(process.env.MAX_UPLOAD_MB ?? 50),
+  maxUploadMb: Number(process.env.MAX_UPLOAD_MB ?? 500),
+  // Durata massima dei video nei post (2 minuti) e programmi usati per controllarli e convertirli.
+  maxVideoSeconds: Number(process.env.MAX_VIDEO_SECONDS ?? 120),
+  ffmpegPath: process.env.FFMPEG_PATH ?? 'ffmpeg',
+  ffprobePath: process.env.FFPROBE_PATH ?? 'ffprobe',
   livekitUrl: process.env.LIVEKIT_URL ?? 'ws://localhost:7880',
   livekitApiKey: process.env.LIVEKIT_API_KEY ?? 'devkey',
   livekitApiSecret: process.env.LIVEKIT_API_SECRET ?? 'devsecret-cambiami-con-almeno-32-caratteri',

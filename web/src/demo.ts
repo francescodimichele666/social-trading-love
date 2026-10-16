@@ -1,6 +1,9 @@
 // Modalità anteprima: un finto server in memoria, per provare l'app senza installare nulla.
 // Si attiva solo con VITE_DEMO=1 (npm run build:demo). Niente viene salvato.
 
+import demoVideo from './assets/demo-video.mp4';
+import demoPoster from './assets/demo-video.jpg';
+
 type U = { id: number; username: string; displayName: string; bio: string; interests: string[]; avatarUrl: string | null; role: 'member' | 'moderator' | 'admin'; isOwner?: boolean };
 
 const now = Date.now();
@@ -26,9 +29,10 @@ const following = new Set([2, 3]);
 
 let nextId = 100;
 type DemoComment = { id: number; authorId: number; body: string; createdAt: string };
-type DemoPost = { id: number; authorId: number; body: string; mediaUrl: string | null; mediaType: 'image' | 'video' | null; createdAt: string; likes: Set<number>; comments: DemoComment[]; flagged?: boolean };
+type DemoPost = { id: number; authorId: number; body: string; mediaUrl: string | null; mediaType: 'image' | 'video' | null; mediaPoster?: string; mediaDuration?: number; createdAt: string; likes: Set<number>; comments: DemoComment[]; flagged?: boolean };
 type DemoRoom = { id: number; hostId: number; title: string; description: string; topic: string; status: 'scheduled' | 'live' | 'ended'; scheduledAt: string; startedAt: string | null; stage: number[]; hands: number[]; listeners: number };
 const posts: DemoPost[] = [
+  { id: 5, authorId: 2, body: 'Primo video! Come decido lo stop loss prima di entrare, e perché non lo sposto mai. Ditemi come fate voi 👇', mediaUrl: demoVideo, mediaType: 'video' as const, mediaPoster: demoPoster, mediaDuration: 9, createdAt: ago(12), likes: new Set<number>([3, 4]), comments: [{ id: 2, authorId: 4, body: 'Chiarissimo, grazie Giulia!', createdAt: ago(6) }] },
   { id: 1, authorId: 2, body: 'Operazione chiusa in perdita (-0,8%). Ho rispettato lo stop loss senza spostarlo: per me oggi è una vittoria. Il grafico con il punto di uscita 👇', mediaUrl: chart('#2dd4bf', '0,60 60,80 120,70 180,110 240,130 300,155 340,160'), mediaType: 'image' as const, createdAt: ago(35), likes: new Set<number>([1, 3]), comments: [{ id: 1, authorId: 3, body: 'Rispetto! Io lo spostavo sempre e perdevo il doppio.', createdAt: ago(20) }] },
   { id: 2, authorId: 3, body: 'Domanda per chi ha più esperienza: come gestite la voglia di "rifarvi" dopo una perdita? Stasera ne parliamo nella Piazza di Giulia?', mediaUrl: null, mediaType: null, createdAt: ago(80), likes: new Set([2]), comments: [] },
   { id: 3, authorId: 1, body: 'Benvenuti nella comunità! Regola numero uno: mai rischiare più dell\'1% del capitale su una singola operazione. Raccontate anche gli errori: è così che si impara.', mediaUrl: null, mediaType: null, createdAt: ago(300), likes: new Set([2, 3, 4]), comments: [] },
@@ -69,7 +73,7 @@ const user = (id: number) => users.find((u) => u.id === id)!;
 const brief = (u: U) => ({ id: u.id, username: u.username, displayName: u.displayName, avatarUrl: u.avatarUrl });
 const visible = (p: DemoPost) => !p.flagged || p.authorId === ME;
 const serializePost = (p: DemoPost) => ({
-  id: p.id, body: p.body, mediaUrl: p.mediaUrl, mediaType: p.mediaType, inReview: Boolean(p.flagged), createdAt: p.createdAt,
+  id: p.id, body: p.body, mediaUrl: p.mediaUrl, mediaType: p.mediaType, mediaPoster: p.mediaPoster ?? null, mediaDuration: p.mediaDuration ?? null, inReview: Boolean(p.flagged), createdAt: p.createdAt,
   author: brief(user(p.authorId)), likes: p.likes.size, comments: p.comments.length, liked: p.likes.has(ME),
   fromFollowing: p.authorId === ME || following.has(p.authorId),
 });

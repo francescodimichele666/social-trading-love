@@ -2,6 +2,20 @@ import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, type Post } from '../api';
 import Icon from './Icon';
+import { formatDuration } from './VideoPlayer';
+
+export const MAX_VIDEO_SECONDS = 120;
+
+// Legge la durata di un video scelto dal telefono, prima di caricarlo.
+function readDuration(file: File): Promise<number> {
+  return new Promise((resolve) => {
+    const v = document.createElement('video');
+    v.preload = 'metadata';
+    v.onloadedmetadata = () => { resolve(v.duration); URL.revokeObjectURL(v.src); };
+    v.onerror = () => resolve(NaN);
+    v.src = URL.createObjectURL(file);
+  });
+}
 
 // I post nuovi arrivano al feed con un evento, così il feed si aggiorna da qualunque pagina.
 export const POST_CREATED = 'stl:post-created';
@@ -12,13 +26,27 @@ function Composer({ onDone }: { onDone: () => void }) {
   const [preview, setPreview] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
+  const [duration, setDuration] = useState<number | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
-  const pick = (f: File | null) => {
+  const pick = async (f: File | null) => {
+    setMsg('');
+    setDuration(null);
+    if (f?.type.startsWith('video')) {
+      const seconds = await readDuration(f);
+      // Se il telefono non sa leggere la durata, decide il server.
+      if (seconds > MAX_VIDEO_SECONDS + 0.5) {
+        setMsg(`Il video dura ${formatDuration(seconds)}: il massimo è 2 minuti. Taglialo dalla galleria del telefono e riprova.`);
+        if (fileInput.current) fileInput.current.value = '';
+        return;
+      }
+      if (Number.isFinite(seconds)) setDuration(seconds);
+    }
     setFile(f);
     setPreview(f ? URL.createObjectURL(f) : null);
   };
+  const isVideo = Boolean(file?.type.startsWith('video'));
 
   const submit = async () => {
     setBusy(true);
@@ -29,7 +57,7 @@ function Composer({ onDone }: { onDone: () => void }) {
       if (file) form.append('file', file);
       const res = await api<{ post: Post; notice: string | null }>('/posts', { form });
       window.dispatchEvent(new CustomEvent(POST_CREATED, { detail: res.post }));
-      if (res.notice) { setMsg(res.notice); setBody(''); pick(null); return; }
+      if (res.notice) { setBody(''); await pick(null); setMsg(res.notice); return; }
       onDone();
       navigate('/');
     } catch (e: any) {
@@ -44,16 +72,17 @@ function Composer({ onDone }: { onDone: () => void }) {
       <textarea autoFocus placeholder="Cosa hai imparato oggi? Un'operazione, un errore, una domanda…" value={body} onChange={(e) => setBody(e.target.value)} maxLength={2000} />
       {preview && (
         <div className="composer-media">
-          {file?.type.startsWith('video') ? <video src={preview} muted playsInline /> : <img src={preview} alt="" />}
-          <button className="icon-btn floating" onClick={() => pick(null)} aria-label="Togli allegato"><Icon name="close" size={18} /></button>
+          {isVideo ? <video src={preview} muted playsInline autoPlay loop /> : <img src={preview} alt="" />}
+          {isVideo && duration != null && <span className="video-badge">{formatDuration(duration)}</span>}
+          <button className="icon-btn floating" onClick={() => { void pick(null); if (fileInput.current) fileInput.current.value = ''; }} aria-label="Togli allegato"><Icon name="close" size={18} /></button>
         </div>
       )}
       {msg && <p className="notice">{msg}</p>}
       <div className="composer-bar">
-        <button className="chip-btn" onClick={() => fileInput.current?.click()}><Icon name="camera" size={18} /> Foto o video</button>
-        <input ref={fileInput} type="file" accept="image/*,video/*" hidden onChange={(e) => pick(e.target.files?.[0] ?? null)} />
+        <button className="chip-btn" onClick={() => fileInput.current?.click()}><Icon name="camera" size={18} /> Foto o video (max 2 min)</button>
+        <input ref={fileInput} type="file" accept="image/*,video/*" hidden onChange={(e) => { void pick(e.target.files?.[0] ?? null); }} />
         <span className="counter">{body.length}/2000</span>
-        <button className="btn" disabled={busy || (!body.trim() && !file)} onClick={submit}>{busy ? 'Pubblico…' : 'Pubblica'}</button>
+        <button className="btn" disabled={busy || (!body.trim() && !file)} onClick={submit}>{busy ? (isVideo ? 'Preparo il video…' : 'Pubblico…') : 'Pubblica'}</button>
       </div>
     </div>
   );

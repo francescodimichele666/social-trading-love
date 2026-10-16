@@ -6,6 +6,7 @@ import path from 'node:path';
 import type { MultipartFile } from '@fastify/multipart';
 import { config } from './config.js';
 import { HttpError } from './app.js';
+import { processVideo } from './video.js';
 
 const TYPES: Record<string, { ext: string; kind: 'image' | 'video' }> = {
   'image/jpeg': { ext: 'jpg', kind: 'image' },
@@ -31,5 +32,6 @@ export async function saveUpload(file: MultipartFile, allowed: Array<'image' | '
     await unlink(dest).catch(() => {});
     throw new HttpError(413, `File troppo grande (massimo ${config.maxUploadMb} MB)`);
   }
-  return { url: `/uploads/${name}`, kind: type.kind };
+  if (type.kind === 'video') return { kind: type.kind, ...(await processVideo(dest)) };
+  return { url: `/uploads/${name}`, kind: type.kind, posterUrl: null, duration: null };
 }

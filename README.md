@@ -15,7 +15,7 @@ La comunità gratuita del trading responsabile: post, video, Piazze live con fin
 
 - Iscrizione libera e gratuita, solo maggiorenni, accettazione delle regole. Il primo iscritto diventa il proprietario: solo lui nomina gli amministratori.
 - "Porta un amico": ogni persona ha un link personale; chi si iscrive con quel link arriva già collegato.
-- Post con testo, foto o video (fino a 50 MB), like e commenti.
+- Post con testo, foto o video. I video durano al massimo 2 minuti: il server li controlla, li converte in MP4 (720p) che si vede su tutti i telefoni e crea la copertina. Nel feed partono senza audio quando sono sullo schermo; un tocco attiva l'audio. Like e commenti.
 - Feed onesto: prima chi segui, poi la comunità, poi "Hai visto tutto per oggi".
 - Piazze live: video e audio, fino a 6 persone sul palco, il pubblico alza la mano, chi conduce fa salire e scendere, chat.
 - Trading responsabile: le frasi tipiche delle truffe ("guadagno sicuro", "gruppo VIP"...) mandano il contenuto in revisione.

@@ -5,6 +5,7 @@ import { useAuth } from '../auth';
 import Avatar from './Avatar';
 import Icon from './Icon';
 import ReportButton from './ReportButton';
+import VideoPlayer from './VideoPlayer';
 
 export default function PostCard({ post, onDeleted }: { post: Post; onDeleted?: (id: number) => void }) {
   const { me } = useAuth();
@@ -50,7 +51,7 @@ export default function PostCard({ post, onDeleted }: { post: Post; onDeleted?: 
       </header>
       {post.body && <p className="post-body">{post.body}</p>}
       {post.mediaUrl && post.mediaType === 'image' && <img className="media" src={post.mediaUrl} alt="" loading="lazy" onDoubleClick={() => !liked && toggleLike()} />}
-      {post.mediaUrl && post.mediaType === 'video' && <video className="media" src={post.mediaUrl} controls playsInline preload="metadata" />}
+      {post.mediaUrl && post.mediaType === 'video' && <VideoPlayer src={post.mediaUrl} poster={post.mediaPoster} duration={post.mediaDuration} />}
       <footer className="post-actions">
         <button className={`act ${liked ? 'on' : ''} ${pop ? 'pop' : ''}`} onClick={toggleLike} aria-pressed={liked} aria-label="Mi piace">
           <Icon name="heart" filled={liked} /> <span>{likes}</span>

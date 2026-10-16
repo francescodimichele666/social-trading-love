@@ -11,7 +11,7 @@ const PAGE = 20;
 
 // Campi comuni per mostrare un post. $1 è sempre l'id di chi guarda.
 const POST_SELECT = `
-  SELECT p.id, p.body, p.media_url, p.media_type, p.flagged, p.created_at,
+  SELECT p.id, p.body, p.media_url, p.media_type, p.media_poster, p.media_duration, p.flagged, p.created_at,
          u.id AS author_id, u.username, u.display_name, u.avatar_url,
          (SELECT count(*)::int FROM likes l WHERE l.post_id = p.id) AS likes,
          (SELECT count(*)::int FROM comments c WHERE c.post_id = p.id AND c.removed_at IS NULL AND (NOT c.flagged OR c.author_id = $1)) AS comments,
@@ -23,7 +23,7 @@ const VISIBLE = `p.removed_at IS NULL AND u.banned_at IS NULL AND (NOT p.flagged
 
 function serialize(r: any) {
   return {
-    id: r.id, body: r.body, mediaUrl: r.media_url, mediaType: r.media_type, inReview: r.flagged, createdAt: r.created_at,
+    id: r.id, body: r.body, mediaUrl: r.media_url, mediaType: r.media_type, mediaPoster: r.media_poster, mediaDuration: r.media_duration, inReview: r.flagged, createdAt: r.created_at,
     author: { id: r.author_id, username: r.username, displayName: r.display_name, avatarUrl: r.avatar_url },
     likes: r.likes, comments: r.comments, liked: r.liked,
   };
@@ -41,7 +41,7 @@ export default async function postRoutes(app: FastifyInstance) {
 
   app.post('/posts', async (req, reply) => {
     let body = '';
-    let media: { url: string; kind: 'image' | 'video' } | null = null;
+    let media: Awaited<ReturnType<typeof saveUpload>> | null = null;
     if (req.isMultipart()) {
       for await (const part of req.parts()) {
         if (part.type === 'file') media = await saveUpload(part, ['image', 'video']);
@@ -56,8 +56,8 @@ export default async function postRoutes(app: FastifyInstance) {
 
     const flagged = hasRedFlags(body);
     const post = await one(
-      'INSERT INTO posts (author_id, body, media_url, media_type, flagged) VALUES ($1, $2, $3, $4, $5) RETURNING id',
-      [req.user.id, body, media?.url ?? null, media?.kind ?? null, flagged],
+      'INSERT INTO posts (author_id, body, media_url, media_type, media_poster, media_duration, flagged) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id',
+      [req.user.id, body, media?.url ?? null, media?.kind ?? null, media?.posterUrl ?? null, media?.duration ?? null, flagged],
     );
     if (flagged) await flagForReview('post', post.id);
     await rewardInviterOnce(req.user.id);
