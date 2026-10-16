@@ -43,14 +43,13 @@ const rooms: DemoRoom[] = [
 const notifications = [
   { id: 1, kind: 'room_live', message: '@giulia è in diretta: Gestire le perdite senza farsi male', link: '/piazze/1', read: false, createdAt: ago(25) },
   { id: 2, kind: 'comment', message: '@giulia ha commentato il tuo post', link: '/post/3', read: false, createdAt: ago(90) },
-  { id: 3, kind: 'invite_reward', message: 'Marco Bianchi è entrato nella comunità: hai un invito in più.', link: '/inviti', read: true, createdAt: ago(2000) },
+  { id: 3, kind: 'invite_reward', message: 'Marco Bianchi è entrato nella comunità grazie a te.', link: '/inviti', read: true, createdAt: ago(2000) },
 ];
 
-const invites = [
-  { code: 'K7PQ2MXA', createdAt: ago(3000), usedAt: ago(2000), usedBy: { username: 'marco', displayName: 'Marco Bianchi' } },
-  { code: 'R4TN8WEZ', createdAt: ago(100), usedAt: null, usedBy: null },
+const friends = [
+  { username: 'marco', displayName: 'Marco Bianchi', avatarUrl: null, active: true, joinedAt: ago(2000) },
+  { username: 'sara', displayName: 'Sara Conti', avatarUrl: null, active: false, joinedAt: ago(300) },
 ];
-let invitesLeft = 2;
 
 const reports = [
   { id: 1, targetType: 'post', targetId: 99, reasonLabel: 'Frasi a rischio (automatico)', details: 'Segnalato in automatico: contiene frasi tipiche di promesse di guadagno o truffe', createdAt: ago(15), reporter: 'sistema automatico', target: { ownerId: 9, preview: 'Entra nel mio gruppo VIP: guadagno sicuro del 20% al mese! Scrivimi in privato.' } },
@@ -92,12 +91,12 @@ export async function demoApi(path: string, method: string, body: any): Promise<
   const m = (re: RegExp) => route.match(re);
   let match: RegExpMatchArray | null;
 
-  if (route === '/rules') return { version: 'anteprima', rules: RULES, inviteRequired: false };
+  if (route === '/rules') return { version: 'anteprima', rules: RULES, firstUser: false };
   if (route === '/login' || route === '/register') return { token: 'demo', user: user(ME) };
   if (route === '/me' && method === 'PATCH') return { user: Object.assign(user(ME), body) };
   if (route === '/me') {
     const me = user(ME);
-    return { user: { ...me, email: 'francesco@esempio.it', invitesLeft }, unreadNotifications: notifications.filter((n) => !n.read).length };
+    return { user: { ...me, email: 'francesco@esempio.it' }, unreadNotifications: notifications.filter((n) => !n.read).length };
   }
   if (route === '/feed') {
     const list = posts.filter(visible).map(serializePost).sort((a, b) => Number(b.fromFollowing) - Number(a.fromFollowing) || b.createdAt.localeCompare(a.createdAt));
@@ -167,14 +166,7 @@ export async function demoApi(path: string, method: string, body: any): Promise<
     u.role = body.role;
     return { role: body.role };
   }
-  if (route === '/invites' && method === 'POST') {
-    if (invitesLeft <= 0) throw new DemoError(400, 'Hai finito gli inviti: ne ricevi altri quando chi hai invitato partecipa');
-    invitesLeft--;
-    const code = Array.from({ length: 8 }, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random() * 32)]).join('');
-    invites.unshift({ code, createdAt: new Date().toISOString(), usedAt: null, usedBy: null });
-    return { code, invitesLeft };
-  }
-  if (route === '/invites') return { invitesLeft, activeInvitees: 1, invites };
+  if (route === '/invites') return { code: 'K7PQ2MXA', joined: friends.length, active: friends.filter((f) => f.active).length, friends };
   if (route === '/notifications/read') { notifications.forEach((n) => (n.read = true)); return { ok: true }; }
   if (route === '/notifications') return { notifications };
   if (route === '/report-reasons') {

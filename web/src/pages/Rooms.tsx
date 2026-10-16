@@ -1,17 +1,21 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { api, type Room } from '../api';
 import Avatar from '../components/Avatar';
+import Icon from '../components/Icon';
+
+const COVERS = ['cover-teal', 'cover-coral', 'cover-violet', 'cover-gold'];
+const coverFor = (r: Room) => COVERS[[...(r.topic || r.title)].reduce((a, c) => a + c.charCodeAt(0), 0) % COVERS.length];
 
 function when(room: Room) {
-  if (room.status === 'live') return 'In diretta ora';
   return new Date(room.scheduledAt).toLocaleString('it-IT', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
 export default function Rooms() {
   const navigate = useNavigate();
+  const [params, setParams] = useSearchParams();
   const [rooms, setRooms] = useState<Room[]>([]);
-  const [creating, setCreating] = useState(false);
+  const creating = params.get('nuova') === '1';
   const [form, setForm] = useState({ title: '', description: '', topic: '', scheduledAt: '', startNow: true });
   const [error, setError] = useState('');
 
@@ -21,6 +25,8 @@ export default function Rooms() {
     const t = setInterval(load, 15000);
     return () => clearInterval(t);
   }, []);
+
+  const setCreating = (on: boolean) => setParams(on ? { nuova: '1' } : {}, { replace: true });
 
   const create = async (e: FormEvent) => {
     e.preventDefault();
@@ -35,36 +41,60 @@ export default function Rooms() {
     }
   };
 
+  const live = rooms.filter((r) => r.status === 'live');
+  const upcoming = rooms.filter((r) => r.status === 'scheduled');
+
+  const card = (r: Room) => (
+    <Link key={r.id} to={`/piazze/${r.id}`} className={`room-card ${r.status === 'live' ? 'live' : ''}`}>
+      <div className={`room-cover ${coverFor(r)}`}>
+        <span className={`pill ${r.status === 'live' ? 'live' : 'soft'}`}>{r.status === 'live' ? '● IN DIRETTA' : when(r)}</span>
+        {r.topic && <span className="topic">#{r.topic}</span>}
+        <h3>{r.title}</h3>
+      </div>
+      <div className="room-body">
+        {r.description && <p className="muted">{r.description}</p>}
+        <div className="room-host">
+          <Avatar user={r.host} size={30} />
+          <span><strong>{r.host.displayName}</strong><small>conduce</small></span>
+          {r.status === 'live' && <span className="listeners"><Icon name="users" size={16} /> {r.listeners}</span>}
+          <span className="btn small">{r.status === 'live' ? 'Entra' : 'Dettagli'}</span>
+        </div>
+      </div>
+    </Link>
+  );
+
   return (
     <div className="page">
       <header className="top">
-        <h1>Piazze</h1>
-        <button className="btn" onClick={() => setCreating(!creating)}>{creating ? 'Chiudi' : '+ Nuova Piazza'}</button>
+        <h1 className="title">Piazze</h1>
+        <button className={`btn ${creating ? 'ghost' : ''}`} onClick={() => setCreating(!creating)}>{creating ? 'Chiudi' : <><Icon name="plus" size={18} /> Nuova</>}</button>
       </header>
       <p className="muted">Stanze dal vivo: fino a 6 persone sul palco, chi ascolta alza la mano per intervenire.</p>
       {creating && (
         <form className="card form" onSubmit={create}>
-          <label>Titolo<input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required minLength={3} maxLength={80} placeholder="Es. I miei errori sul Bitcoin, parliamone" /></label>
-          <label>Di cosa si parla<textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} maxLength={500} /></label>
-          <label>Argomento<input value={form.topic} onChange={(e) => setForm({ ...form, topic: e.target.value })} maxLength={30} placeholder="azioni, crypto, rischio, psicologia…" /></label>
-          <label className="check"><input type="checkbox" checked={form.startNow} onChange={(e) => setForm({ ...form, startNow: e.target.checked })} /><span>Inizia subito</span></label>
-          {!form.startNow && <label>Quando<input type="datetime-local" value={form.scheduledAt} onChange={(e) => setForm({ ...form, scheduledAt: e.target.value })} required /></label>}
+          <label>Titolo<input id="roomTitle" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required minLength={3} maxLength={80} placeholder="Es. I miei errori sul Bitcoin, parliamone" /></label>
+          <label>Di cosa si parla<textarea id="roomDescription" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} maxLength={500} /></label>
+          <label>Argomento<input id="roomTopic" value={form.topic} onChange={(e) => setForm({ ...form, topic: e.target.value })} maxLength={30} placeholder="azioni, crypto, rischio, psicologia…" /></label>
+          <div className="segmented">
+            <button type="button" className={form.startNow ? 'on' : ''} onClick={() => setForm({ ...form, startNow: true })}><Icon name="live" size={18} /> Subito</button>
+            <button type="button" className={!form.startNow ? 'on' : ''} onClick={() => setForm({ ...form, startNow: false })}><Icon name="calendar" size={18} /> Programma</button>
+          </div>
+          {!form.startNow && <label>Quando<input id="roomWhen" type="datetime-local" value={form.scheduledAt} onChange={(e) => setForm({ ...form, scheduledAt: e.target.value })} required /></label>}
           {error && <p className="error">{error}</p>}
-          <button className="btn">{form.startNow ? 'Vai in diretta' : 'Programma'}</button>
+          <button className="btn big">{form.startNow ? 'Vai in diretta' : 'Programma la Piazza'}</button>
         </form>
       )}
-      {rooms.map((r) => (
-        <Link key={r.id} to={`/piazze/${r.id}`} className={`card room-card ${r.status === 'live' ? 'live' : ''}`}>
-          <div className="room-top">
-            <span className={`pill ${r.status === 'live' ? 'live' : ''}`}>{r.status === 'live' ? '● LIVE' : when(r)}</span>
-            {r.topic && <span className="tag">#{r.topic}</span>}
-          </div>
-          <h3>{r.title}</h3>
-          {r.description && <p className="muted">{r.description}</p>}
-          <div className="room-host"><Avatar user={r.host} size={26} /> {r.host.displayName}{r.status === 'live' && <span className="muted"> · {r.listeners} presenti</span>}</div>
-        </Link>
-      ))}
-      {rooms.length === 0 && <div className="the-end"><strong>Nessuna Piazza in programma</strong><p>Aprine una tu: anche una chiacchierata di 20 minuti aiuta la comunità.</p></div>}
+      {live.length > 0 && <h2 className="section-title"><span className="dot" /> In diretta ora</h2>}
+      {live.map(card)}
+      {upcoming.length > 0 && <h2 className="section-title">In programma</h2>}
+      {upcoming.map(card)}
+      {rooms.length === 0 && (
+        <div className="the-end">
+          <div className="big-ico"><Icon name="live" size={28} /></div>
+          <strong>Nessuna Piazza in programma</strong>
+          <p>Aprine una tu: anche una chiacchierata di 20 minuti aiuta la comunità.</p>
+        </div>
+      )}
     </div>
   );
 }

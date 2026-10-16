@@ -42,36 +42,38 @@ test('verifica età', () => {
   assert.equal(isAdult('2008-10-16', new Date('2026-10-16')), true);
 });
 
-test('il primo iscritto diventa amministratore senza invito', async () => {
+test('il primo iscritto diventa proprietario e amministratore', async () => {
   const rules = await call('GET', '/api/rules');
-  assert.equal(rules.body.inviteRequired, false);
+  assert.equal(rules.body.firstUser, true);
   const res = await call('POST', '/api/register', undefined, person('francesco'));
   assert.equal(res.status, 201);
   assert.equal(res.body.user.role, 'admin');
   admin = res.body.token;
 });
 
-test('dopo il primo serve un invito valido e la maggiore età', async () => {
-  assert.equal((await call('POST', '/api/register', undefined, person('anna'))).status, 400);
-  assert.equal((await call('POST', '/api/register', undefined, person('anna', 'FALSO123'))).status, 400);
-
-  const inv = await call('POST', '/api/invites', admin);
-  assert.equal(inv.status, 201);
-  assert.equal(inv.body.invitesLeft, 2);
-
-  const minor = await call('POST', '/api/register', undefined, { ...person('piccolo', inv.body.code), birthDate: '2012-01-01' });
+test('iscrizione libera per i maggiorenni, codice amico facoltativo', async () => {
+  const minor = await call('POST', '/api/register', undefined, { ...person('piccolo'), birthDate: '2012-01-01' });
   assert.equal(minor.status, 400);
 
-  const ok = await call('POST', '/api/register', undefined, person('anna', inv.body.code));
+  const friend = await call('GET', '/api/invites', admin);
+  assert.match(friend.body.code, /^[A-Z2-9]{8}$/);
+  assert.equal((await call('GET', '/api/invites', admin)).body.code, friend.body.code, 'il codice personale non cambia');
+
+  const ok = await call('POST', '/api/register', undefined, person('anna', friend.body.code));
   assert.equal(ok.status, 201);
   anna = ok.body.token;
   annaId = ok.body.user.id;
-  assert.equal((await call('POST', '/api/register', undefined, person('anna2', inv.body.code))).status, 400, 'codice già usato');
 
-  const inv2 = await call('POST', '/api/invites', anna);
-  const b = await call('POST', '/api/register', undefined, person('bruno', inv2.body.code));
+  // Senza codice, o con un codice sbagliato, ci si iscrive lo stesso.
+  const b = await call('POST', '/api/register', undefined, person('bruno', 'FALSO123'));
+  assert.equal(b.status, 201);
   bruno = b.body.token;
   brunoId = b.body.user.id;
+  assert.equal((await call('POST', '/api/register', undefined, person('bruno'))).status, 409, 'nome già usato');
+
+  const list = await call('GET', '/api/invites', admin);
+  assert.equal(list.body.joined, 1);
+  assert.equal(list.body.friends[0].username, 'anna');
 });
 
 test('login e profilo', async () => {
@@ -83,14 +85,13 @@ test('login e profilo', async () => {
   assert.equal((await call('GET', '/api/me')).status, 401);
 });
 
-test('il primo post di un invitato premia chi lo ha invitato', async () => {
+test('quando un amico portato da te partecipa, ricevi un avviso una volta sola', async () => {
   const res = await call('POST', '/api/posts', anna, { body: 'Il mio piano: rischio massimo 1% a operazione' });
   assert.equal(res.status, 201);
-  const invites = await call('GET', '/api/invites', admin);
-  assert.equal(invites.body.invitesLeft, 3);
-  assert.equal(invites.body.activeInvitees, 1);
+  assert.equal((await call('GET', '/api/invites', admin)).body.active, 1);
   await call('POST', '/api/posts', anna, { body: 'Secondo post' });
-  assert.equal((await call('GET', '/api/invites', admin)).body.invitesLeft, 3, 'premio una volta sola');
+  const notes = (await call('GET', '/api/notifications', admin)).body.notifications.filter((n: any) => n.kind === 'invite_reward');
+  assert.equal(notes.length, 1);
 });
 
 test('feed onesto: prima chi segui, poi la comunità, poi la fine', async () => {
@@ -233,8 +234,7 @@ test('solo il proprietario nomina amministratori', async () => {
   assert.equal((await call('POST', `/api/moderation/users/${annaId}/role`, anna, { role: 'admin' })).status, 403);
   assert.equal((await call('POST', `/api/moderation/users/${annaId}/role`, admin, { role: 'admin' })).status, 200);
 
-  const inv = await call('POST', '/api/invites', admin);
-  const carlo = await call('POST', '/api/register', undefined, person('carlo', inv.body.code));
+  const carlo = await call('POST', '/api/register', undefined, person('carlo'));
   const carloId = carlo.body.user.id;
 
   // Anna è amministratrice ma non proprietaria: può nominare moderatori, non amministratori.

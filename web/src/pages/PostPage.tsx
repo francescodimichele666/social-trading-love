@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api, timeAgo, type Post } from '../api';
 import PostCard from '../components/PostCard';
 import Avatar from '../components/Avatar';
+import Icon from '../components/Icon';
 import ReportButton from '../components/ReportButton';
 import { useAuth } from '../auth';
 
@@ -38,7 +39,7 @@ export default function PostPage() {
 
   return (
     <div className="page">
-      <button className="link-btn" onClick={() => navigate(-1)}>← Indietro</button>
+      <button className="icon-btn" onClick={() => navigate(-1)} aria-label="Indietro"><Icon name="back" /></button>
       {error && <p className="error">{error}</p>}
       {post && <PostCard post={post} onDeleted={() => navigate('/')} />}
       <div className="comments">

@@ -1,7 +1,9 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { useAuth } from './auth';
 import { DEMO } from './api';
+import Icon from './components/Icon';
+import CreateSheet from './components/CreateSheet';
 import Welcome from './pages/Welcome';
 import Register from './pages/Register';
 import Login from './pages/Login';
@@ -20,20 +22,24 @@ const RoomPage = lazy(() => import('./pages/RoomPage'));
 export default function App() {
   const { me, loading, unread } = useAuth();
   const location = useLocation();
+  const [creating, setCreating] = useState(false);
 
-  const banner = DEMO && <div className="demo-banner">Anteprima: dati di esempio, niente viene salvato</div>;
+  const banner = DEMO && <div className="demo-banner">Anteprima con dati di esempio: niente viene salvato</div>;
 
   if (loading) return <div className="center-screen"><div className="spinner" /></div>;
 
   if (!me) {
     return (
-      <>{banner}<Routes>
-        <Route path="/" element={<Welcome />} />
-        <Route path="/entra" element={<Login />} />
-        <Route path="/iscriviti" element={<Register />} />
-        <Route path="/regole" element={<Rules />} />
-        <Route path="*" element={<Navigate to={`/entra?dopo=${encodeURIComponent(location.pathname)}`} replace />} />
-      </Routes></>
+      <>
+        {banner}
+        <Routes>
+          <Route path="/" element={<Welcome />} />
+          <Route path="/entra" element={<Login />} />
+          <Route path="/iscriviti" element={<Register />} />
+          <Route path="/regole" element={<Rules />} />
+          <Route path="*" element={<Navigate to={`/entra?dopo=${encodeURIComponent(location.pathname)}`} replace />} />
+        </Routes>
+      </>
     );
   }
 
@@ -43,7 +49,7 @@ export default function App() {
       {banner}
       <main className="content">
         <Routes>
-          <Route path="/" element={<Feed />} />
+          <Route path="/" element={<Feed onCompose={() => setCreating(true)} />} />
           <Route path="/post/:id" element={<PostPage />} />
           <Route path="/u/:username" element={<Profile />} />
           <Route path="/piazze" element={<Rooms />} />
@@ -56,14 +62,15 @@ export default function App() {
         </Routes>
       </main>
       {!inRoom && (
-        <nav className="tabbar">
-          <NavLink to="/" end><span className="ico">◎</span>Feed</NavLink>
-          <NavLink to="/piazze"><span className="ico">◉</span>Piazze</NavLink>
-          <NavLink to="/inviti"><span className="ico">✦</span>Inviti</NavLink>
-          <NavLink to="/notifiche"><span className="ico">♥</span>Avvisi{unread > 0 && <b className="badge">{unread}</b>}</NavLink>
-          <NavLink to={`/u/${me.username}`}><span className="ico">☺</span>Profilo</NavLink>
+        <nav className="tabbar" aria-label="Menu principale">
+          <NavLink to="/" end><Icon name="home" /><span>Home</span></NavLink>
+          <NavLink to="/piazze"><Icon name="live" /><span>Piazze</span></NavLink>
+          <button className="tab-create" onClick={() => setCreating(true)} aria-label="Crea"><Icon name="plus" size={26} /></button>
+          <NavLink to="/notifiche"><Icon name="bell" /><span>Avvisi</span>{unread > 0 && <b className="badge">{unread}</b>}</NavLink>
+          <NavLink to={`/u/${me.username}`}><Icon name="user" /><span>Profilo</span></NavLink>
         </nav>
       )}
+      <CreateSheet open={creating} onClose={() => setCreating(false)} />
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api';
+import Icon from './Icon';
 
 type Target = 'post' | 'comment' | 'user' | 'room';
 
@@ -26,11 +27,14 @@ export default function ReportButton({ targetType, targetId, label = 'Segnala' }
 
   return (
     <>
-      <button className="link-btn muted" onClick={() => setOpen(true)}>{label}</button>
+      {label === 'Segnala'
+        ? <button className="act subtle" onClick={() => setOpen(true)} aria-label="Segnala"><Icon name="flag" size={19} /></button>
+        : <button className="link-btn muted" onClick={() => setOpen(true)}>{label}</button>}
       {open && (
         <div className="sheet-backdrop" onClick={() => setOpen(false)}>
           <div className="sheet" onClick={(e) => e.stopPropagation()}>
-            <h3>Cosa non va?</h3>
+            <div className="sheet-handle" />
+            <h3 className="sheet-title">Cosa non va?</h3>
             {Object.entries(reasons).map(([key, text]) => (
               <label key={key} className={`choice ${reason === key ? 'on' : ''}`}>
                 <input type="radio" name="reason" value={key} checked={reason === key} onChange={() => setReason(key)} />

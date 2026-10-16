@@ -4,6 +4,8 @@ import { BrowserRouter, HashRouter } from 'react-router-dom';
 import { DEMO } from './api';
 import { AuthProvider } from './auth';
 import App from './App';
+import '@fontsource-variable/bricolage-grotesque';
+import '@fontsource-variable/manrope';
 import './styles.css';
 
 // Nell'anteprima gli indirizzi stanno dopo il # così la pagina funziona ovunque sia pubblicata.

@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { one, query } from '../db.js';
 import { HttpError } from '../app.js';
 import { publicUser } from './auth.js';
-import { newInviteCode } from '../invites.js';
+import { friendCodeFor } from '../invites.js';
 import { saveUpload } from '../uploads.js';
 import { notify } from '../notify.js';
 
@@ -69,27 +69,19 @@ export default async function userRoutes(app: FastifyInstance) {
     return { users: rows.map(publicUser) };
   });
 
-  // Inviti: ognuno ne ha pochi, e ne guadagna altri quando chi ha invitato partecipa davvero.
+  // Porta un amico: codice personale riutilizzabile e chi si è iscritto grazie a te.
   app.get('/invites', async (req) => {
-    const me = await one('SELECT invites_left FROM users WHERE id = $1', [req.user.id]);
+    const code = await friendCodeFor(req.user.id);
     const { rows } = await query(
-      `SELECT i.code, i.created_at, i.used_at, u.username AS used_by_username, u.display_name AS used_by_name, u.invite_rewarded AS active
-       FROM invites i LEFT JOIN users u ON u.id = i.used_by WHERE i.created_by = $1 ORDER BY i.created_at DESC`,
+      `SELECT username, display_name, avatar_url, invite_rewarded AS active, created_at FROM users
+       WHERE invited_by = $1 AND banned_at IS NULL ORDER BY created_at DESC`,
       [req.user.id],
     );
     return {
-      invitesLeft: me.invites_left,
-      activeInvitees: rows.filter((r) => r.active).length,
-      invites: rows.map((r) => ({ code: r.code, createdAt: r.created_at, usedAt: r.used_at, usedBy: r.used_by_username ? { username: r.used_by_username, displayName: r.used_by_name } : null })),
+      code,
+      joined: rows.length,
+      active: rows.filter((r) => r.active).length,
+      friends: rows.map((r) => ({ username: r.username, displayName: r.display_name, avatarUrl: r.avatar_url, active: r.active, joinedAt: r.created_at })),
     };
-  });
-
-  app.post('/invites', async (req, reply) => {
-    const res = await query('UPDATE users SET invites_left = invites_left - 1 WHERE id = $1 AND invites_left > 0 RETURNING invites_left', [req.user.id]);
-    if (!res.rows[0]) throw new HttpError(400, 'Hai finito gli inviti: ne ricevi altri quando chi hai invitato partecipa');
-    const code = newInviteCode();
-    await query('INSERT INTO invites (code, created_by) VALUES ($1, $2)', [code, req.user.id]);
-    reply.status(201);
-    return { code, invitesLeft: res.rows[0].invites_left };
   });
 }

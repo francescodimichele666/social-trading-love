@@ -1,6 +1,6 @@
 # Social Trading Love
 
-La comunità gratuita del trading responsabile: post, video, Piazze live con fino a 6 persone sul palco, ingresso solo su invito.
+La comunità gratuita del trading responsabile: post, video, Piazze live con fino a 6 persone sul palco, iscrizione libera e gratuita.
 
 ## Cosa c'è dentro
 
@@ -13,8 +13,8 @@ La comunità gratuita del trading responsabile: post, video, Piazze live con fin
 
 ## Funzioni
 
-- Iscrizione solo con codice invito, solo maggiorenni, accettazione delle regole. Il primo iscritto diventa amministratore.
-- Ogni persona ha 3 inviti; ne guadagna uno quando chi ha invitato partecipa davvero.
+- Iscrizione libera e gratuita, solo maggiorenni, accettazione delle regole. Il primo iscritto diventa il proprietario: solo lui nomina gli amministratori.
+- "Porta un amico": ogni persona ha un link personale; chi si iscrive con quel link arriva già collegato.
 - Post con testo, foto o video (fino a 50 MB), like e commenti.
 - Feed onesto: prima chi segui, poi la comunità, poi "Hai visto tutto per oggi".
 - Piazze live: video e audio, fino a 6 persone sul palco, il pubblico alza la mano, chi conduce fa salire e scendere, chat.
@@ -48,7 +48,7 @@ Ti serve: un server Linux (Ubuntu va benissimo) con almeno 2 GB di RAM, raggiung
    docker compose up -d --build
    ```
    La prima volta ci mette qualche minuto. Il certificato HTTPS arriva da solo.
-7. **Apri il sito** dal telefono e iscriviti per primo: diventi amministratore. Poi crea i codici invito dalla sezione Inviti.
+7. **Apri il sito** dal telefono e iscriviti per primo con l'email messa in `OWNER_EMAIL`: diventi il proprietario.
 
 Comandi utili: `docker compose logs -f api` (vedere cosa succede), `docker compose down` (spegnere), `git pull && docker compose up -d --build` (aggiornare).
 

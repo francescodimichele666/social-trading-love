@@ -1,51 +1,14 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, type Post } from '../api';
 import { useAuth } from '../auth';
 import PostCard from '../components/PostCard';
+import LiveStrip from '../components/LiveStrip';
+import Avatar from '../components/Avatar';
+import Icon from '../components/Icon';
+import { POST_CREATED } from '../components/CreateSheet';
 
-function Composer({ onPosted }: { onPosted: (p: Post) => void }) {
-  const [body, setBody] = useState('');
-  const [file, setFile] = useState<File | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState('');
-  const fileInput = useRef<HTMLInputElement>(null);
-
-  const submit = async () => {
-    setBusy(true);
-    setMsg('');
-    try {
-      const form = new FormData();
-      form.append('body', body);
-      if (file) form.append('file', file);
-      const res = await api('/posts', { form });
-      onPosted(res.post);
-      setBody('');
-      setFile(null);
-      if (fileInput.current) fileInput.current.value = '';
-      if (res.notice) setMsg(res.notice);
-    } catch (e: any) {
-      setMsg(e.message);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <div className="card composer">
-      <textarea placeholder="Cosa hai imparato oggi? Un'operazione, un errore, una domanda…" value={body} onChange={(e) => setBody(e.target.value)} maxLength={2000} />
-      {file && <p className="muted small">Allegato: {file.name} <button className="link-btn" onClick={() => setFile(null)}>rimuovi</button></p>}
-      {msg && <p className="notice">{msg}</p>}
-      <div className="row">
-        <button className="btn ghost" onClick={() => fileInput.current?.click()}>📷 Foto o video</button>
-        <input ref={fileInput} type="file" accept="image/*,video/*" hidden onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
-        <button className="btn" disabled={busy || (!body.trim() && !file)} onClick={submit}>{busy ? 'Pubblico…' : 'Pubblica'}</button>
-      </div>
-    </div>
-  );
-}
-
-export default function Feed() {
+export default function Feed({ onCompose }: { onCompose: () => void }) {
   const { me } = useAuth();
   const [posts, setPosts] = useState<Post[]>([]);
   const [nextPage, setNextPage] = useState<number | null>(0);
@@ -63,18 +26,33 @@ export default function Feed() {
   }, []);
 
   useEffect(() => { load(0, true); }, [load]);
+  useEffect(() => {
+    const onNew = (e: Event) => setPosts((list) => [{ ...(e as CustomEvent<Post>).detail, fromFollowing: true }, ...list]);
+    window.addEventListener(POST_CREATED, onNew);
+    return () => window.removeEventListener(POST_CREATED, onNew);
+  }, []);
 
   const firstCommunity = posts.findIndex((p) => !p.fromFollowing);
   return (
     <div className="page">
       <header className="top">
-        <h1 className="brand small">Trading <span>Love</span></h1>
-        {me?.role !== 'member' && <Link className="pill" to="/moderazione">Moderazione</Link>}
+        <h1 className="brand small">Trading <em>Love</em></h1>
+        <div className="top-actions">
+          {me?.role !== 'member' && <Link className="icon-btn" to="/moderazione" aria-label="Moderazione"><Icon name="shield" /></Link>}
+          <Link className="icon-btn" to="/inviti" aria-label="Porta un amico"><Icon name="gift" /></Link>
+        </div>
       </header>
-      <Composer onPosted={(p) => setPosts((list) => [{ ...p, fromFollowing: true }, ...list])} />
+      <LiveStrip />
+      {me && (
+        <button className="prompt-card" onClick={onCompose}>
+          <Avatar user={me} size={40} />
+          <span>Cosa hai imparato oggi, {me.displayName.split(' ')[0]}?</span>
+          <Icon name="camera" />
+        </button>
+      )}
       {posts.map((p, i) => (
-        <div key={p.id}>
-          {i === firstCommunity && <div className="divider">Dalla comunità</div>}
+        <div key={p.id} className="feed-item">
+          {i === firstCommunity && <div className="divider"><span>Dalla comunità</span></div>}
           <PostCard post={p} onDeleted={(id) => setPosts((list) => list.filter((x) => x.id !== id))} />
         </div>
       ))}
@@ -82,7 +60,7 @@ export default function Feed() {
       {loading && <div className="spinner" />}
       {nextPage === null && !loading && (
         <div className="the-end">
-          <div className="big-ico">✓</div>
+          <div className="big-ico"><Icon name="check" size={28} /></div>
           <strong>Hai visto tutto per oggi</strong>
           <p>Nessuno scorrimento infinito. Vuoi fare due chiacchiere dal vivo?</p>
           <Link className="btn" to="/piazze">Vai alle Piazze</Link>

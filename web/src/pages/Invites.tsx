@@ -1,47 +1,52 @@
 import { useEffect, useState } from 'react';
-import { api } from '../api';
+import { Link } from 'react-router-dom';
+import { api, DEMO } from '../api';
+import Avatar from '../components/Avatar';
+import Icon from '../components/Icon';
 
-type Invite = { code: string; createdAt: string; usedAt: string | null; usedBy: { username: string; displayName: string } | null };
+type Friend = { username: string; displayName: string; avatarUrl: string | null; active: boolean; joinedAt: string };
 
 export default function Invites() {
-  const [data, setData] = useState<{ invitesLeft: number; activeInvitees: number; invites: Invite[] } | null>(null);
-  const [error, setError] = useState('');
-  const [copied, setCopied] = useState('');
+  const [data, setData] = useState<{ code: string; joined: number; active: number; friends: Friend[] } | null>(null);
+  const [copied, setCopied] = useState(false);
 
-  const load = () => api('/invites').then(setData);
-  useEffect(() => { load(); }, []);
-
-  const create = async () => {
-    try { await api('/invites', { method: 'POST' }); load(); } catch (e: any) { setError(e.message); }
-  };
-
-  const share = async (code: string) => {
-    const link = `${location.origin}/iscriviti?invito=${code}`;
-    const text = `Ti invito nella comunità del trading responsabile. Il tuo codice: ${code}`;
-    try {
-      if (navigator.share) await navigator.share({ title: 'Social Trading Love', text, url: link });
-      else { await navigator.clipboard.writeText(`${text}\n${link}`); setCopied(code); }
-    } catch { /* condivisione annullata */ }
-  };
-
+  useEffect(() => { api('/invites').then(setData); }, []);
   if (!data) return <div className="page"><div className="spinner" /></div>;
+
+  const link = DEMO ? `${location.origin}${location.pathname}#/iscriviti?invito=${data.code}` : `${location.origin}/iscriviti?invito=${data.code}`;
+  const share = async () => {
+    const text = 'Ti aspetto nella comunità del trading responsabile: impariamo insieme, dal vivo, senza promesse facili.';
+    try {
+      if (navigator.share) { await navigator.share({ title: 'Social Trading Love', text, url: link }); return; }
+      await navigator.clipboard.writeText(`${text}\n${link}`);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { /* annullato */ }
+  };
+
   return (
     <div className="page">
-      <h1>I tuoi inviti</h1>
-      <div className="card invite-hero">
-        <div><b className="big-num">{data.invitesLeft}</b><span>inviti disponibili</span></div>
-        <div><b className="big-num">{data.activeInvitees}</b><span>persone attive portate da te</span></div>
+      <header className="top">
+        <Link className="icon-btn" to="/" aria-label="Indietro"><Icon name="back" /></Link>
+        <h1 className="title">Porta un amico</h1>
+        <span />
+      </header>
+      <section className="invite-hero">
+        <div className="create-ico violet big"><Icon name="gift" size={30} /></div>
+        <p>Chi si iscrive con il tuo link arriva già collegato a te. La comunità cresce con persone che fanno trading con la testa.</p>
+        <div className="code-box"><small>Il tuo codice</small><code>{data.code}</code></div>
+        <button className="btn big" onClick={share}><Icon name="share" size={18} /> {copied ? 'Link copiato!' : 'Condividi il link'}</button>
+      </section>
+      <div className="stat-pair">
+        <div><b>{data.joined}</b><span>iscritti grazie a te</span></div>
+        <div><b>{data.active}</b><span>già attivi</span></div>
       </div>
-      <p className="muted">Invita solo chi conosci e chi fa trading con la testa. Ogni volta che una persona che hai invitato partecipa davvero (pubblica o entra in una Piazza), ricevi un invito in più.</p>
-      {error && <p className="error">{error}</p>}
-      <button className="btn big wide" disabled={data.invitesLeft === 0} onClick={create}>Crea un codice invito</button>
-      {data.invites.map((i) => (
-        <div key={i.code} className="card invite">
-          <code>{i.code}</code>
-          {i.usedBy
-            ? <span className="muted">Usato da {i.usedBy.displayName}</span>
-            : <button className="btn small" onClick={() => share(i.code)}>{copied === i.code ? 'Copiato!' : 'Condividi'}</button>}
-        </div>
+      {data.friends.map((f) => (
+        <Link key={f.username} to={`/u/${f.username}`} className="list-row">
+          <Avatar user={f} size={40} />
+          <span><strong>{f.displayName}</strong><small>@{f.username}</small></span>
+          <span className={`pill ${f.active ? '' : 'soft'}`}>{f.active ? 'Attivo' : 'Appena iscritto'}</span>
+        </Link>
       ))}
     </div>
   );

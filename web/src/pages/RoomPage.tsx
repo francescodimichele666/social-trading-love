@@ -5,6 +5,7 @@ import { Track } from 'livekit-client';
 import '@livekit/components-styles';
 import { api, type Room } from '../api';
 import Avatar from '../components/Avatar';
+import Icon from '../components/Icon';
 import ReportButton from '../components/ReportButton';
 import { useAuth } from '../auth';
 
@@ -106,7 +107,7 @@ export default function RoomPage() {
   return (
     <div className="room">
       <header className="room-bar">
-        <button className="link-btn" onClick={leave}>← Esci</button>
+        <button className="icon-btn" onClick={leave} aria-label="Esci"><Icon name="back" /></button>
         <div className="room-title">
           <strong>{room.title}</strong>
           <small>{room.status === 'live' ? `● In diretta · ${room.listeners} presenti` : room.status === 'ended' ? 'Finita' : 'Non ancora iniziata'}</small>
@@ -139,10 +140,10 @@ export default function RoomPage() {
 
       {room.status === 'live' && (
         <footer className="room-actions">
-          {conn?.token !== 'demo' && <button className="btn ghost" onClick={() => setShowChat(!showChat)}>{showChat ? 'Nascondi chat' : '💬 Chat'}</button>}
+          {conn?.token !== 'demo' && <button className="btn ghost" onClick={() => setShowChat(!showChat)}>{showChat ? 'Nascondi chat' : <><Icon name="chat" size={18} /> Chat</>}</button>}
           {me.role === 'audience' && (me.handRaised
             ? <button className="btn ghost" onClick={() => act(`/rooms/${id}/hand`, 'DELETE')}>Abbassa la mano</button>
-            : <button className="btn" onClick={() => act(`/rooms/${id}/hand`)}>✋ Alza la mano</button>)}
+            : <button className="btn" onClick={() => act(`/rooms/${id}/hand`)}><Icon name="hand" size={18} /> Alza la mano</button>)}
           {me.role === 'speaker' && <button className="btn ghost" onClick={() => act(`/rooms/${id}/speakers/${myId}`, 'DELETE')}>Scendi dal palco</button>}
           {me.isHost && <button className="btn danger" onClick={end}>Chiudi Piazza</button>}
         </footer>

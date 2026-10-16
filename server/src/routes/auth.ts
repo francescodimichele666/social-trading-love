@@ -32,7 +32,7 @@ export function publicUser(u: any) {
 export default async function authRoutes(app: FastifyInstance) {
   app.get('/rules', async () => {
     const count = await one<{ n: number }>('SELECT count(*)::int AS n FROM users');
-    return { version: RULES_VERSION, rules: RULES, inviteRequired: (count?.n ?? 0) > 0 };
+    return { version: RULES_VERSION, rules: RULES, firstUser: (count?.n ?? 0) === 0 };
   });
 
   app.post('/register', { config: { rateLimit: { max: 10, timeWindow: '1 hour' } } }, async (req, reply) => {
@@ -50,11 +50,10 @@ export default async function authRoutes(app: FastifyInstance) {
       if (first && config.ownerEmail && data.email !== config.ownerEmail) {
         throw new HttpError(403, "Il primo account è riservato al proprietario della comunità");
       }
-      if (!first) {
-        if (!data.inviteCode) throw new HttpError(400, 'Serve un codice invito');
-        const inv = await c.query('SELECT created_by FROM invites WHERE code = $1 AND used_by IS NULL FOR UPDATE', [data.inviteCode]);
-        if (!inv.rows[0]) throw new HttpError(400, 'Codice invito non valido o già usato');
-        invitedBy = inv.rows[0].created_by;
+      // Iscrizione libera. Il codice di un amico è facoltativo: serve solo a sapere chi ti ha portato.
+      if (!first && data.inviteCode) {
+        const friend = await c.query('SELECT id FROM users WHERE friend_code = $1 AND banned_at IS NULL', [data.inviteCode]);
+        invitedBy = friend.rows[0]?.id ?? null;
       }
       const taken = await c.query('SELECT 1 FROM users WHERE email = $1 OR username = $2', [data.email, data.username]);
       if (taken.rows[0]) throw new HttpError(409, 'Email o nome utente già in uso');
@@ -64,7 +63,6 @@ export default async function authRoutes(app: FastifyInstance) {
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
         [data.email, data.username, passwordHash, data.displayName, data.birthDate, first ? 'admin' : 'member', first, invitedBy, RULES_VERSION],
       );
-      if (invitedBy) await c.query('UPDATE invites SET used_by = $1, used_at = now() WHERE code = $2', [u.id, data.inviteCode]);
       return u;
     });
 
@@ -83,6 +81,6 @@ export default async function authRoutes(app: FastifyInstance) {
   app.get('/me', { preHandler: app.authenticate }, async (req) => {
     const user = await one('SELECT * FROM users WHERE id = $1', [req.user.id]);
     const unread = await one<{ n: number }>('SELECT count(*)::int AS n FROM notifications WHERE user_id = $1 AND read_at IS NULL', [req.user.id]);
-    return { user: { ...publicUser(user), email: user.email, invitesLeft: user.invites_left }, unreadNotifications: unread?.n ?? 0 };
+    return { user: { ...publicUser(user), email: user.email }, unreadNotifications: unread?.n ?? 0 };
   });
 }

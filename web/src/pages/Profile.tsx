@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { api, type Post, type User } from '../api';
 import { useAuth } from '../auth';
 import Avatar from '../components/Avatar';
 import PostCard from '../components/PostCard';
 import ReportButton from '../components/ReportButton';
+import Icon from '../components/Icon';
 
 type ProfileData = { user: User; followers: number; following: number; posts: number; isFollowing: boolean; isMe: boolean };
 
@@ -65,6 +66,8 @@ export default function Profile() {
   return (
     <div className="page">
       <section className="profile-head">
+        <div className="profile-cover" aria-hidden="true" />
+        {data.isMe && <button className="icon-btn profile-logout" onClick={logout} aria-label="Esci"><Icon name="logout" /></button>}
         <button className="avatar-btn" disabled={!data.isMe} onClick={() => avatarInput.current?.click()} aria-label="Cambia foto">
           <Avatar user={u} size={88} />
         </button>
@@ -74,16 +77,16 @@ export default function Profile() {
         {u.bio && <p>{u.bio}</p>}
         {u.interests.length > 0 && <div className="tags">{u.interests.map((t) => <span key={t} className="tag">#{t}</span>)}</div>}
         <div className="stats">
-          <span><b>{data.posts}</b> post</span><span><b>{data.followers}</b> follower</span><span><b>{data.following}</b> seguiti</span>
+          <span><b>{data.posts}</b>post</span><span><b>{data.followers}</b>follower</span><span><b>{data.following}</b>seguiti</span>
         </div>
         {data.isMe ? (
-          <div className="row">
-            <button className="btn ghost" onClick={() => setEditing(!editing)}>Modifica profilo</button>
-            <button className="btn ghost" onClick={logout}>Esci</button>
+          <div className="row center-row">
+            <button className="btn ghost" onClick={() => setEditing(!editing)}><Icon name="edit" size={18} /> Modifica</button>
+            <Link className="btn" to="/inviti"><Icon name="gift" size={18} /> Porta un amico</Link>
           </div>
         ) : (
-          <div className="row">
-            <button className={`btn ${data.isFollowing ? 'ghost' : ''}`} onClick={toggleFollow}>{data.isFollowing ? 'Segui già' : 'Segui'}</button>
+          <div className="row center-row">
+            <button className={`btn ${data.isFollowing ? 'ghost' : ''}`} onClick={toggleFollow}>{data.isFollowing ? <><Icon name="check" size={18} /> Segui già</> : 'Segui'}</button>
             <ReportButton targetType="user" targetId={u.id} label="Segnala profilo" />
           </div>
         )}

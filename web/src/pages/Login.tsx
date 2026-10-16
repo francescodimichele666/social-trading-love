@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../auth';
+import HeartChart from '../components/HeartChart';
 
 export default function Login() {
   const { login } = useAuth();
@@ -28,12 +29,14 @@ export default function Login() {
 
   return (
     <form className="auth" onSubmit={submit}>
+      <div className="aurora" aria-hidden="true" />
+      <HeartChart size={96} />
       <h1 className="brand">Bentornato</h1>
-      <label>Email o nome utente<input autoComplete="username" value={form.login} onChange={(e) => setForm({ ...form, login: e.target.value })} required /></label>
-      <label>Password<input type="password" autoComplete="current-password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required /></label>
+      <label>Email o nome utente<input id="login" autoComplete="username" value={form.login} onChange={(e) => setForm({ ...form, login: e.target.value })} required /></label>
+      <label>Password<input id="password" type="password" autoComplete="current-password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required /></label>
       {error && <p className="error">{error}</p>}
       <button className="btn big" disabled={busy}>Entra</button>
-      <Link className="small-link" to="/iscriviti">Hai un invito? Iscriviti</Link>
+      <Link className="small-link" to="/iscriviti">Non hai un account? Iscriviti gratis</Link>
     </form>
   );
 }
