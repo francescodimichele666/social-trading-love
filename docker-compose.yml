@@ -24,6 +24,7 @@ services:
     environment:
       DATABASE_URL: postgres://stl:${DB_PASSWORD}@db:5432/stl
       JWT_SECRET: ${JWT_SECRET}
+      OWNER_EMAIL: ${OWNER_EMAIL:-}
       UPLOAD_DIR: /data/uploads
       LIVEKIT_URL: wss://${LIVE_DOMAIN}
       LIVEKIT_API_KEY: ${LIVEKIT_API_KEY}
@@ -55,6 +56,17 @@ services:
       - "443:443"
     volumes:
       - caddy-data:/data
+
+  # Facoltativo: tiene aggiornato l'indirizzo gratuito DuckDNS se l'IP di casa cambia.
+  # Si accende solo con:  docker compose --profile duckdns up -d
+  duckdns:
+    image: lscr.io/linuxserver/duckdns:latest
+    profiles: ["duckdns"]
+    restart: unless-stopped
+    environment:
+      SUBDOMAINS: ${DUCKDNS_SUBDOMAIN:-}
+      TOKEN: ${DUCKDNS_TOKEN:-}
+      TZ: Europe/Rome
 
 volumes:
   db-data:

@@ -84,6 +84,13 @@ export default async function moderationRoutes(app: FastifyInstance) {
     const target = await describeTarget(report.target_type, report.target_id);
     if (!target) throw new HttpError(404, 'Contenuto non più esistente');
     if (action === 'ban' && target.ownerId === req.user.id) throw new HttpError(400, 'Non puoi sospendere te stesso');
+    if (action === 'ban' || report.target_type === 'user') {
+      const owner = await one('SELECT role, is_owner FROM users WHERE id = $1', [target.ownerId]);
+      if (action !== 'dismiss' && owner?.is_owner) throw new HttpError(403, 'Il proprietario non può essere sospeso');
+      if (action !== 'dismiss' && owner?.role !== 'member' && !req.user.isOwner) {
+        throw new HttpError(403, 'Solo il proprietario può sospendere moderatori e amministratori');
+      }
+    }
 
     await tx(async (c) => {
       if (action === 'remove' && report.target_type !== 'user') {
@@ -119,10 +126,20 @@ export default async function moderationRoutes(app: FastifyInstance) {
   });
 
   app.post<{ Params: { id: string } }>('/moderation/users/:id/role', { preHandler: app.requireModerator }, async (req) => {
-    if (req.user.role !== 'admin') throw new HttpError(403, "Solo l'amministratore può cambiare i ruoli");
+    // Amministratori: nominano moderatori. Solo il proprietario nomina o toglie amministratori.
+    if (req.user.role !== 'admin') throw new HttpError(403, 'Solo gli amministratori possono cambiare i ruoli');
     const { role } = z.object({ role: z.enum(['member', 'moderator', 'admin']) }).parse(req.body);
-    const res = await query('UPDATE users SET role = $2 WHERE id = $1 RETURNING id', [Number(req.params.id), role]);
-    if (!res.rowCount) throw new HttpError(404, 'Utente non trovato');
+    const target = await one('SELECT id, role, is_owner FROM users WHERE id = $1', [Number(req.params.id)]);
+    if (!target) throw new HttpError(404, 'Utente non trovato');
+    if (target.is_owner) throw new HttpError(403, 'Il ruolo del proprietario non si può cambiare');
+    if ((role === 'admin' || target.role === 'admin') && !req.user.isOwner) {
+      throw new HttpError(403, 'Solo il proprietario può nominare o togliere amministratori');
+    }
+    await query('UPDATE users SET role = $2 WHERE id = $1', [target.id, role]);
+    if (role !== target.role) {
+      const label = { member: 'membro', moderator: 'moderatore', admin: 'amministratore' }[role];
+      await notify(target.id, 'role', `Ora sei ${label} della comunità.`, null);
+    }
     return { role };
   });
 }

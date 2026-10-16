@@ -23,6 +23,10 @@ La comunità gratuita del trading responsabile: post, video, Piazze live con fin
 
 ## Mettere online sul tuo server (passo passo)
 
+**Hai un PC Windows a casa?** Segui la [guida per Windows](GUIDA-WINDOWS.md): c'è uno script che fa quasi tutto da solo.
+
+Su un server Linux:
+
 Ti serve: un server Linux (Ubuntu va benissimo) con almeno 2 GB di RAM, raggiungibile da internet, e un dominio.
 
 1. **Dominio.** Compra un dominio (es. su Aruba o Register.it, circa 10 € l'anno). Nel pannello del dominio crea due record DNS di tipo `A` che puntano all'IP del server: uno per il dominio (`tradinglove.it`) e uno per `live.tradinglove.it`.

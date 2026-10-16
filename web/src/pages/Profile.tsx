@@ -10,7 +10,7 @@ type ProfileData = { user: User; followers: number; following: number; posts: nu
 
 export default function Profile() {
   const { username } = useParams();
-  const { logout, refresh } = useAuth();
+  const { me, logout, refresh } = useAuth();
   const [data, setData] = useState<ProfileData | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [editing, setEditing] = useState(false);
@@ -53,6 +53,11 @@ export default function Profile() {
     try { await api('/me/avatar', { form: f }); await refresh(); load(); } catch (e: any) { setError(e.message); }
   };
 
+  const setRole = async (role: 'member' | 'moderator' | 'admin') => {
+    if (!data) return;
+    try { await api(`/moderation/users/${data.user.id}/role`, { body: { role } }); setError(''); load(); } catch (e: any) { setError(e.message); }
+  };
+
   if (error && !data) return <div className="page"><p className="error">{error}</p></div>;
   if (!data) return <div className="page"><div className="spinner" /></div>;
   const u = data.user;
@@ -65,7 +70,7 @@ export default function Profile() {
         </button>
         <input ref={avatarInput} type="file" accept="image/*" hidden onChange={(e) => e.target.files?.[0] && uploadAvatar(e.target.files[0])} />
         <h1>{u.displayName}</h1>
-        <p className="muted">@{u.username}{u.role !== 'member' && <span className="pill">{u.role === 'admin' ? 'Amministratore' : 'Moderatore'}</span>}</p>
+        <p className="muted">@{u.username}{u.role !== 'member' && <span className="pill">{u.isOwner ? 'Proprietario' : u.role === 'admin' ? 'Amministratore' : 'Moderatore'}</span>}</p>
         {u.bio && <p>{u.bio}</p>}
         {u.interests.length > 0 && <div className="tags">{u.interests.map((t) => <span key={t} className="tag">#{t}</span>)}</div>}
         <div className="stats">
@@ -80,6 +85,17 @@ export default function Profile() {
           <div className="row">
             <button className={`btn ${data.isFollowing ? 'ghost' : ''}`} onClick={toggleFollow}>{data.isFollowing ? 'Segui già' : 'Segui'}</button>
             <ReportButton targetType="user" targetId={u.id} label="Segnala profilo" />
+          </div>
+        )}
+        {!data.isMe && me?.role === 'admin' && !u.isOwner && (u.role !== 'admin' || me.isOwner) && (
+          <div className="card role-box">
+            <small className="muted">Ruolo nella comunità</small>
+            <div className="row">
+              <button className={`btn small ${u.role === 'member' ? '' : 'ghost'}`} onClick={() => setRole('member')}>Membro</button>
+              <button className={`btn small ${u.role === 'moderator' ? '' : 'ghost'}`} onClick={() => setRole('moderator')}>Moderatore</button>
+              {me.isOwner && <button className={`btn small ${u.role === 'admin' ? '' : 'ghost'}`} onClick={() => setRole('admin')}>Amministratore</button>}
+            </div>
+            {error && <p className="error">{error}</p>}
           </div>
         )}
       </section>

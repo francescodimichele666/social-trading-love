@@ -224,3 +224,36 @@ test('caricamento di una foto nel post', async () => {
   const file = await app.inject({ method: 'GET', url: post.mediaUrl });
   assert.equal(file.statusCode, 200);
 });
+
+test('solo il proprietario nomina amministratori', async () => {
+  const me = await call('GET', '/api/me', admin);
+  assert.equal(me.body.user.isOwner, true);
+  const ownerId = me.body.user.id;
+
+  assert.equal((await call('POST', `/api/moderation/users/${annaId}/role`, anna, { role: 'admin' })).status, 403);
+  assert.equal((await call('POST', `/api/moderation/users/${annaId}/role`, admin, { role: 'admin' })).status, 200);
+
+  const inv = await call('POST', '/api/invites', admin);
+  const carlo = await call('POST', '/api/register', undefined, person('carlo', inv.body.code));
+  const carloId = carlo.body.user.id;
+
+  // Anna è amministratrice ma non proprietaria: può nominare moderatori, non amministratori.
+  const denied = await call('POST', `/api/moderation/users/${carloId}/role`, anna, { role: 'admin' });
+  assert.equal(denied.status, 403);
+  assert.match(denied.body.error, /proprietario/);
+  assert.equal((await call('POST', `/api/moderation/users/${carloId}/role`, anna, { role: 'moderator' })).status, 200);
+  assert.equal((await call('POST', `/api/moderation/users/${ownerId}/role`, anna, { role: 'member' })).status, 403);
+
+  // Un amministratore non può sospendere il proprietario né un altro moderatore.
+  await call('POST', '/api/reports', anna, { targetType: 'user', targetId: ownerId, reason: 'altro' });
+  await call('POST', '/api/reports', anna, { targetType: 'user', targetId: carloId, reason: 'altro' });
+  const open = (await call('GET', '/api/moderation/reports', anna)).body.reports;
+  const onOwner = open.find((r: any) => r.targetId === ownerId);
+  const onCarlo = open.find((r: any) => r.targetId === carloId);
+  assert.equal((await call('POST', `/api/moderation/reports/${onOwner.id}/decide`, anna, { action: 'ban', statement: 'Prova di sospensione.' })).status, 403);
+  assert.equal((await call('POST', `/api/moderation/reports/${onCarlo.id}/decide`, anna, { action: 'ban', statement: 'Prova di sospensione.' })).status, 403);
+  assert.equal((await call('POST', `/api/moderation/reports/${onCarlo.id}/decide`, anna, { action: 'dismiss', statement: 'Nessun problema.' })).status, 200);
+
+  assert.equal((await call('POST', `/api/moderation/users/${annaId}/role`, admin, { role: 'member' })).status, 200);
+  assert.equal((await call('GET', '/api/me', anna)).body.user.role, 'member');
+});

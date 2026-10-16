@@ -16,7 +16,7 @@ import roomRoutes from './routes/rooms.js';
 import moderationRoutes from './routes/moderation.js';
 import notificationRoutes from './routes/notifications.js';
 
-export type AuthUser = { id: number; role: 'member' | 'moderator' | 'admin'; username: string };
+export type AuthUser = { id: number; role: 'member' | 'moderator' | 'admin'; username: string; isOwner: boolean };
 
 declare module '@fastify/jwt' {
   interface FastifyJWT {
@@ -58,10 +58,10 @@ export async function buildApp(opts: { logger?: boolean; rateLimit?: boolean } =
     } catch {
       throw new HttpError(401, 'Accesso richiesto');
     }
-    const user = await one('SELECT id, role, username, banned_at FROM users WHERE id = $1', [payload.id]);
+    const user = await one('SELECT id, role, username, is_owner, banned_at FROM users WHERE id = $1', [payload.id]);
     if (!user) throw new HttpError(401, 'Accesso richiesto');
     if (user.banned_at) throw new HttpError(403, 'Account sospeso');
-    req.user = { id: user.id, role: user.role, username: user.username };
+    req.user = { id: user.id, role: user.role, username: user.username, isOwner: user.is_owner };
   });
 
   app.decorate('requireModerator', async (req: FastifyRequest, reply: FastifyReply) => {

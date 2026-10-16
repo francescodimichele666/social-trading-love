@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { one, tx } from '../db.js';
 import { HttpError } from '../app.js';
 import { RULES, RULES_VERSION } from '../rules.js';
+import { config } from '../config.js';
 
 const registerSchema = z.object({
   email: z.string().trim().toLowerCase().email(),
@@ -24,7 +25,7 @@ export function isAdult(birthDate: string, now = new Date()): boolean {
 export function publicUser(u: any) {
   return {
     id: u.id, username: u.username, displayName: u.display_name, bio: u.bio, interests: u.interests,
-    avatarUrl: u.avatar_url, role: u.role, createdAt: u.created_at,
+    avatarUrl: u.avatar_url, role: u.role, isOwner: u.is_owner, createdAt: u.created_at,
   };
 }
 
@@ -46,6 +47,9 @@ export default async function authRoutes(app: FastifyInstance) {
       const first = n === 0;
       let invitedBy: number | null = null;
 
+      if (first && config.ownerEmail && data.email !== config.ownerEmail) {
+        throw new HttpError(403, "Il primo account è riservato al proprietario della comunità");
+      }
       if (!first) {
         if (!data.inviteCode) throw new HttpError(400, 'Serve un codice invito');
         const inv = await c.query('SELECT created_by FROM invites WHERE code = $1 AND used_by IS NULL FOR UPDATE', [data.inviteCode]);
@@ -56,9 +60,9 @@ export default async function authRoutes(app: FastifyInstance) {
       if (taken.rows[0]) throw new HttpError(409, 'Email o nome utente già in uso');
 
       const { rows: [u] } = await c.query(
-        `INSERT INTO users (email, username, password_hash, display_name, birth_date, role, invited_by, rules_version)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-        [data.email, data.username, passwordHash, data.displayName, data.birthDate, first ? 'admin' : 'member', invitedBy, RULES_VERSION],
+        `INSERT INTO users (email, username, password_hash, display_name, birth_date, role, is_owner, invited_by, rules_version)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+        [data.email, data.username, passwordHash, data.displayName, data.birthDate, first ? 'admin' : 'member', first, invitedBy, RULES_VERSION],
       );
       if (invitedBy) await c.query('UPDATE invites SET used_by = $1, used_at = now() WHERE code = $2', [u.id, data.inviteCode]);
       return u;

@@ -16,5 +16,7 @@ export const config = {
   livekitApiSecret: process.env.LIVEKIT_API_SECRET ?? 'devsecret-cambiami-con-almeno-32-caratteri',
   // false nei test o se LiveKit non è ancora installato: i permessi si aggiornano al prossimo ingresso.
   livekitSync: process.env.LIVEKIT_SYNC !== 'false',
+  // Se impostata, solo questa email può diventare il primo iscritto (il proprietario).
+  ownerEmail: (process.env.OWNER_EMAIL ?? '').trim().toLowerCase(),
   corsOrigin: process.env.CORS_ORIGIN ?? true,
 };
