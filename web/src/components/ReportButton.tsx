@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { api } from '../api';
 import Icon from './Icon';
 
@@ -30,7 +31,7 @@ export default function ReportButton({ targetType, targetId, label = 'Segnala' }
       {label === 'Segnala'
         ? <button className="act subtle" onClick={() => setOpen(true)} aria-label="Segnala"><Icon name="flag" size={19} /></button>
         : <button className="link-btn muted" onClick={() => setOpen(true)}>{label}</button>}
-      {open && (
+      {open && createPortal(
         <div className="sheet-backdrop" onClick={() => setOpen(false)}>
           <div className="sheet" onClick={(e) => e.stopPropagation()}>
             <div className="sheet-handle" />
@@ -48,7 +49,8 @@ export default function ReportButton({ targetType, targetId, label = 'Segnala' }
               <button className="btn" disabled={!reason} onClick={send}>Invia segnalazione</button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   );

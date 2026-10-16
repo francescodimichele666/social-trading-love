@@ -20,6 +20,7 @@ La comunità gratuita del trading responsabile: post, video, Piazze live con fin
 - Piazze live: video e audio, fino a 6 persone sul palco, il pubblico alza la mano, chi conduce fa salire e scendere, chat.
 - Trading responsabile: le frasi tipiche delle truffe ("guadagno sicuro", "gruppo VIP"...) mandano il contenuto in revisione.
 - Segnalazioni e pannello di moderazione: ogni decisione arriva alla persona con la motivazione (Digital Services Act).
+- Pannello amministratore (solo per gli amministratori): numeri della comunità e iscrizioni degli ultimi 14 giorni, rimozione immediata di post e commenti con motivazione, elenco degli account sospesi e riattivazione. Moderatori e amministratori sospesi li riattiva solo il proprietario.
 
 ## Mettere online sul tuo server (passo passo)
 

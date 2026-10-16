@@ -14,6 +14,7 @@ import Rooms from './pages/Rooms';
 import Invites from './pages/Invites';
 import Notifications from './pages/Notifications';
 import Moderation from './pages/Moderation';
+import Admin from './pages/Admin';
 import Rules from './pages/Rules';
 
 // La parte video (LiveKit) è pesante: si scarica solo quando si entra in una Piazza.
@@ -57,6 +58,7 @@ export default function App() {
           <Route path="/inviti" element={<Invites />} />
           <Route path="/notifiche" element={<Notifications />} />
           <Route path="/moderazione" element={me.role === 'member' ? <Navigate to="/" /> : <Moderation />} />
+          <Route path="/admin" element={me.role === 'admin' ? <Admin /> : <Navigate to="/" />} />
           <Route path="/regole" element={<Rules />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

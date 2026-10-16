@@ -14,6 +14,7 @@ import userRoutes from './routes/users.js';
 import postRoutes from './routes/posts.js';
 import roomRoutes from './routes/rooms.js';
 import moderationRoutes from './routes/moderation.js';
+import adminRoutes from './routes/admin.js';
 import notificationRoutes from './routes/notifications.js';
 
 export type AuthUser = { id: number; role: 'member' | 'moderator' | 'admin'; username: string; isOwner: boolean };
@@ -29,6 +30,7 @@ declare module 'fastify' {
   interface FastifyInstance {
     authenticate: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
     requireModerator: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
+    requireAdmin: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
   }
 }
 
@@ -69,6 +71,11 @@ export async function buildApp(opts: { logger?: boolean; rateLimit?: boolean } =
     if (req.user.role === 'member') throw new HttpError(403, 'Solo per moderatori');
   });
 
+  app.decorate('requireAdmin', async (req: FastifyRequest, reply: FastifyReply) => {
+    await app.authenticate(req, reply);
+    if (req.user.role !== 'admin') throw new HttpError(403, 'Solo per amministratori');
+  });
+
   app.setErrorHandler((err: any, _req, reply) => {
     if (err instanceof ZodError) {
       return reply.status(400).send({ error: 'Dati non validi', details: err.issues.map((i) => `${i.path.join('.')}: ${i.message}`) });
@@ -85,6 +92,7 @@ export async function buildApp(opts: { logger?: boolean; rateLimit?: boolean } =
   await app.register(postRoutes, { prefix: '/api' });
   await app.register(roomRoutes, { prefix: '/api' });
   await app.register(moderationRoutes, { prefix: '/api' });
+  await app.register(adminRoutes, { prefix: '/api' });
   await app.register(notificationRoutes, { prefix: '/api' });
 
   return app;

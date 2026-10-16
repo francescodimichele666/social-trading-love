@@ -59,6 +59,12 @@ const reports = [
   { id: 1, targetType: 'post', targetId: 99, reasonLabel: 'Frasi a rischio (automatico)', details: 'Segnalato in automatico: contiene frasi tipiche di promesse di guadagno o truffe', createdAt: ago(15), reporter: 'sistema automatico', target: { ownerId: 9, preview: 'Entra nel mio gruppo VIP: guadagno sicuro del 20% al mese! Scrivimi in privato.' } },
 ];
 
+const suspended = [
+  { id: 9, username: 'guru_vip', displayName: 'Guru VIP', avatarUrl: null, role: 'member' as const, suspendedAt: ago(1500), reason: 'Chiedeva soldi in privato per un "gruppo VIP" con segnali garantiti.' },
+];
+// Iscrizioni finte degli ultimi 14 giorni, per il pannello amministratore.
+const signupCounts = [2, 1, 3, 0, 4, 2, 5, 3, 6, 4, 7, 5, 9, 6];
+
 const RULES = [
   'Qui si impara e ci si confronta: nessun consiglio di investimento personalizzato e nessun "segnale" da copiare.',
   'Niente promesse di guadagni sicuri, rendimenti garantiti o schemi per arricchirsi in fretta.',
@@ -70,7 +76,7 @@ const RULES = [
 const RED_FLAGS = ['guadagno sicuro', 'guadagni sicuri', 'garantit', 'senza rischi', 'gruppo vip', 'segnali vip', 'scrivimi in privato', 'diventa ricco'];
 
 const user = (id: number) => users.find((u) => u.id === id)!;
-const brief = (u: U) => ({ id: u.id, username: u.username, displayName: u.displayName, avatarUrl: u.avatarUrl });
+const brief = (u: U) => ({ id: u.id, username: u.username, displayName: u.displayName, avatarUrl: u.avatarUrl, isOwner: Boolean(u.isOwner) });
 const visible = (p: DemoPost) => !p.flagged || p.authorId === ME;
 const serializePost = (p: DemoPost) => ({
   id: p.id, body: p.body, mediaUrl: p.mediaUrl, mediaType: p.mediaType, mediaPoster: p.mediaPoster ?? null, mediaDuration: p.mediaDuration ?? null, inReview: Boolean(p.flagged), createdAt: p.createdAt,
@@ -182,6 +188,26 @@ export async function demoApi(path: string, method: string, body: any): Promise<
     if (body.action !== 'dismiss' && String(body.statement ?? '').trim().length < 10) throw new DemoError(400, 'Dati non validi: statement: Scrivi una motivazione chiara (almeno 10 caratteri)');
     reports.splice(reports.findIndex((r) => r.id === Number(match![1])), 1);
     return { done: true };
+  }
+  if (route === '/admin/stats') {
+    const signups = signupCounts.map((count, i) => ({ day: new Date(now - (13 - i) * 86400000).toISOString().slice(0, 10), count }));
+    return {
+      members: 57 + users.length, newMembers7d: signupCounts.slice(7).reduce((a, b) => a + b, 0), active7d: 34, suspended: suspended.length,
+      staff: users.filter((u) => u.role !== 'member').length, posts: 180 + posts.length, posts7d: 41, videos: posts.filter((p) => p.mediaType === 'video').length + 6,
+      comments: 412, liveRooms: rooms.filter((r) => r.status === 'live').length, rooms7d: 5, openReports: reports.length, signups,
+    };
+  }
+  if (route === '/admin/suspended') return { users: suspended };
+  if ((match = m(/^\/admin\/users\/(\d+)\/reinstate$/))) {
+    if (String(body.statement ?? '').trim().length < 10) throw new DemoError(400, 'Scrivi una motivazione chiara (almeno 10 caratteri)');
+    suspended.splice(suspended.findIndex((u) => u.id === Number(match![1])), 1);
+    return { reinstated: true };
+  }
+  if (route === '/admin/remove') {
+    if (String(body.statement ?? '').trim().length < 10) throw new DemoError(400, 'Scrivi una motivazione chiara (almeno 10 caratteri)');
+    if (body.targetType === 'post') { const i = posts.findIndex((p) => p.id === body.targetId); if (i >= 0) posts.splice(i, 1); }
+    if (body.targetType === 'comment') posts.forEach((p) => { p.comments = p.comments.filter((c) => c.id !== body.targetId); });
+    return { removed: true };
   }
   if (route === '/rooms' && method === 'POST') {
     const r = { id: nextId++, hostId: ME, title: body.title, description: body.description ?? '', topic: body.topic ?? '', status: (body.startNow ? 'live' : 'scheduled') as any, scheduledAt: body.scheduledAt ?? new Date().toISOString(), startedAt: body.startNow ? new Date().toISOString() : null, stage: [ME], hands: [3], listeners: 1 };

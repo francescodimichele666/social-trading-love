@@ -5,9 +5,10 @@ import PostCard from '../components/PostCard';
 import Avatar from '../components/Avatar';
 import Icon from '../components/Icon';
 import ReportButton from '../components/ReportButton';
+import RemoveButton from '../components/RemoveButton';
 import { useAuth } from '../auth';
 
-type Comment = { id: number; body: string; inReview: boolean; createdAt: string; author: { id: number; username: string; displayName: string; avatarUrl: string | null } };
+type Comment = { id: number; body: string; inReview: boolean; createdAt: string; author: { id: number; username: string; displayName: string; avatarUrl: string | null; isOwner?: boolean } };
 
 export default function PostPage() {
   const { id } = useParams();
@@ -51,7 +52,10 @@ export default function PostPage() {
               <p>{c.body}</p>
               {me?.id === c.author.id
                 ? <button className="link-btn muted" onClick={() => remove(c.id)}>Elimina</button>
-                : <ReportButton targetType="comment" targetId={c.id} />}
+                : <span className="comment-tools">
+                    <ReportButton targetType="comment" targetId={c.id} />
+                    <RemoveButton targetType="comment" targetId={c.id} authorIsOwner={c.author.isOwner} onRemoved={load} />
+                  </span>}
             </div>
           </div>
         ))}

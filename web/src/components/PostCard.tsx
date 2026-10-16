@@ -6,6 +6,7 @@ import Avatar from './Avatar';
 import Icon from './Icon';
 import ReportButton from './ReportButton';
 import VideoPlayer from './VideoPlayer';
+import RemoveButton from './RemoveButton';
 
 export default function PostCard({ post, onDeleted }: { post: Post; onDeleted?: (id: number) => void }) {
   const { me } = useAuth();
@@ -61,7 +62,10 @@ export default function PostCard({ post, onDeleted }: { post: Post; onDeleted?: 
         <span className="spacer" />
         {me?.id === post.author.id
           ? <button className="act subtle" onClick={remove} aria-label="Elimina"><Icon name="trash" size={19} /></button>
-          : <ReportButton targetType="post" targetId={post.id} />}
+          : <>
+              <RemoveButton targetType="post" targetId={post.id} authorIsOwner={post.author.isOwner} onRemoved={() => onDeleted?.(post.id)} />
+              <ReportButton targetType="post" targetId={post.id} />
+            </>}
       </footer>
     </article>
   );

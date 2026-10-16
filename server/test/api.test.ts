@@ -292,3 +292,44 @@ test('solo il proprietario nomina amministratori', async () => {
   assert.equal((await call('POST', `/api/moderation/users/${annaId}/role`, admin, { role: 'member' })).status, 200);
   assert.equal((await call('GET', '/api/me', anna)).body.user.role, 'member');
 });
+
+test('strumenti amministratori: numeri, rimozione immediata, riattivazione', async () => {
+  const ownerId = (await call('GET', '/api/me', admin)).body.user.id;
+  const dario = (await call('POST', '/api/register', undefined, person('dario'))).body;
+  const elena = (await call('POST', '/api/register', undefined, person('elena'))).body;
+  assert.equal((await call('POST', `/api/moderation/users/${elena.user.id}/role`, admin, { role: 'moderator' })).status, 200);
+
+  // Solo gli amministratori: i membri e i moderatori non vedono questi strumenti.
+  assert.equal((await call('GET', '/api/admin/stats', dario.token)).status, 403);
+  assert.equal((await call('GET', '/api/admin/stats', elena.token)).status, 403);
+
+  assert.equal((await call('POST', `/api/moderation/users/${annaId}/role`, admin, { role: 'admin' })).status, 200);
+  const stats = await call('GET', '/api/admin/stats', anna);
+  assert.equal(stats.status, 200);
+  assert.equal(stats.body.signups.length, 14);
+  assert.ok(stats.body.members >= 5);
+  assert.ok(stats.body.suspended >= 1);
+  assert.ok(stats.body.videos >= 1);
+
+  // Rimozione immediata con motivazione, senza segnalazione.
+  const post = (await call('POST', '/api/posts', dario.token, { body: 'Post da togliere' })).body.post;
+  assert.equal((await call('POST', '/api/admin/remove', anna, { targetType: 'post', targetId: post.id, statement: 'corto' })).status, 400);
+  assert.equal((await call('POST', '/api/admin/remove', anna, { targetType: 'post', targetId: post.id, statement: 'Pubblicità di un servizio a pagamento.' })).status, 200);
+  assert.equal((await call('GET', `/api/posts/${post.id}`, dario.token)).status, 404);
+  assert.match((await call('GET', '/api/notifications', dario.token)).body.notifications[0].message, /Pubblicità/);
+  const ownerPost = (await call('POST', '/api/posts', admin, { body: 'Post del proprietario' })).body.post;
+  assert.equal((await call('POST', '/api/admin/remove', anna, { targetType: 'post', targetId: ownerPost.id, statement: 'Prova di rimozione.' })).status, 403);
+
+  // Riattivazione: un amministratore riattiva i membri, solo il proprietario riattiva moderatori e amministratori.
+  const suspended = (await call('GET', '/api/admin/suspended', anna)).body.users;
+  assert.ok(suspended.some((u: any) => u.id === brunoId && u.reason));
+  assert.equal((await call('POST', `/api/admin/users/${brunoId}/reinstate`, anna, { statement: 'Ha chiarito, era un malinteso.' })).status, 200);
+  assert.equal((await call('POST', '/api/login', undefined, { login: 'bruno', password: 'password123' })).status, 200);
+
+  await call('POST', '/api/reports', dario.token, { targetType: 'user', targetId: elena.user.id, reason: 'altro' });
+  const rep = (await call('GET', '/api/moderation/reports', admin)).body.reports.find((r: any) => r.targetId === elena.user.id);
+  assert.equal((await call('POST', `/api/moderation/reports/${rep.id}/decide`, admin, { action: 'ban', statement: 'Prova di sospensione.' })).status, 200);
+  assert.equal((await call('POST', `/api/admin/users/${elena.user.id}/reinstate`, anna, { statement: 'Prova di riattivazione.' })).status, 403);
+  assert.equal((await call('POST', `/api/admin/users/${elena.user.id}/reinstate`, admin, { statement: 'Prova di riattivazione.' })).status, 200);
+  assert.equal(ownerId > 0, true);
+});

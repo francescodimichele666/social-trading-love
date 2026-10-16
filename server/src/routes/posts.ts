@@ -12,7 +12,7 @@ const PAGE = 20;
 // Campi comuni per mostrare un post. $1 è sempre l'id di chi guarda.
 const POST_SELECT = `
   SELECT p.id, p.body, p.media_url, p.media_type, p.media_poster, p.media_duration, p.flagged, p.created_at,
-         u.id AS author_id, u.username, u.display_name, u.avatar_url,
+         u.id AS author_id, u.username, u.display_name, u.avatar_url, u.is_owner AS author_is_owner,
          (SELECT count(*)::int FROM likes l WHERE l.post_id = p.id) AS likes,
          (SELECT count(*)::int FROM comments c WHERE c.post_id = p.id AND c.removed_at IS NULL AND (NOT c.flagged OR c.author_id = $1)) AS comments,
          EXISTS (SELECT 1 FROM likes l WHERE l.post_id = p.id AND l.user_id = $1) AS liked
@@ -24,7 +24,7 @@ const VISIBLE = `p.removed_at IS NULL AND u.banned_at IS NULL AND (NOT p.flagged
 function serialize(r: any) {
   return {
     id: r.id, body: r.body, mediaUrl: r.media_url, mediaType: r.media_type, mediaPoster: r.media_poster, mediaDuration: r.media_duration, inReview: r.flagged, createdAt: r.created_at,
-    author: { id: r.author_id, username: r.username, displayName: r.display_name, avatarUrl: r.avatar_url },
+    author: { id: r.author_id, username: r.username, displayName: r.display_name, avatarUrl: r.avatar_url, isOwner: r.author_is_owner },
     likes: r.likes, comments: r.comments, liked: r.liked,
   };
 }
@@ -104,7 +104,7 @@ export default async function postRoutes(app: FastifyInstance) {
     const post = await one(`${POST_SELECT} WHERE p.id = $2 AND ${VISIBLE}`, [req.user.id, Number(req.params.id)]);
     if (!post) throw new HttpError(404, 'Post non trovato');
     const { rows } = await query(
-      `SELECT c.id, c.body, c.flagged, c.created_at, u.id AS author_id, u.username, u.display_name, u.avatar_url
+      `SELECT c.id, c.body, c.flagged, c.created_at, u.id AS author_id, u.username, u.display_name, u.avatar_url, u.is_owner
        FROM comments c JOIN users u ON u.id = c.author_id
        WHERE c.post_id = $2 AND c.removed_at IS NULL AND u.banned_at IS NULL AND (NOT c.flagged OR c.author_id = $1)
        ORDER BY c.created_at`,
@@ -112,7 +112,7 @@ export default async function postRoutes(app: FastifyInstance) {
     );
     return {
       post: serialize(post),
-      comments: rows.map((c) => ({ id: c.id, body: c.body, inReview: c.flagged, createdAt: c.created_at, author: { id: c.author_id, username: c.username, displayName: c.display_name, avatarUrl: c.avatar_url } })),
+      comments: rows.map((c) => ({ id: c.id, body: c.body, inReview: c.flagged, createdAt: c.created_at, author: { id: c.author_id, username: c.username, displayName: c.display_name, avatarUrl: c.avatar_url, isOwner: c.is_owner } })),
     };
   });
 

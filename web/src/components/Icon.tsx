@@ -26,6 +26,7 @@ const PATHS: Record<string, string> = {
   sound: 'M4 9h4l5-4v14l-5-4H4zM16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12',
   muted: 'M4 9h4l5-4v14l-5-4H4zM17 9.5l5 5M22 9.5l-5 5',
   video: 'M3 6h12v12H3zM15 10l6-3.5v11L15 14',
+  panel: 'M4 20V10M10 20V4M16 20v-7M22 20H2',
   trash: 'M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13',
 };
 
