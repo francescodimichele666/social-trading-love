@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { useAuth } from './auth';
+import { DEMO } from './api';
 import Welcome from './pages/Welcome';
 import Register from './pages/Register';
 import Login from './pages/Login';
@@ -20,23 +21,26 @@ export default function App() {
   const { me, loading, unread } = useAuth();
   const location = useLocation();
 
+  const banner = DEMO && <div className="demo-banner">Anteprima: dati di esempio, niente viene salvato</div>;
+
   if (loading) return <div className="center-screen"><div className="spinner" /></div>;
 
   if (!me) {
     return (
-      <Routes>
+      <>{banner}<Routes>
         <Route path="/" element={<Welcome />} />
         <Route path="/entra" element={<Login />} />
         <Route path="/iscriviti" element={<Register />} />
         <Route path="/regole" element={<Rules />} />
         <Route path="*" element={<Navigate to={`/entra?dopo=${encodeURIComponent(location.pathname)}`} replace />} />
-      </Routes>
+      </Routes></>
     );
   }
 
   const inRoom = /^\/piazze\/\d+/.test(location.pathname);
   return (
     <div className={`app ${inRoom ? 'app-room' : ''}`}>
+      {banner}
       <main className="content">
         <Routes>
           <Route path="/" element={<Feed />} />

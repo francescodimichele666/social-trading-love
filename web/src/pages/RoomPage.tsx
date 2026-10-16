@@ -24,6 +24,21 @@ function Stage() {
   );
 }
 
+// Nell'anteprima non c'è il server video: mostriamo chi è sul palco con le iniziali.
+function DemoStage({ stage }: { stage: Person[] }) {
+  return (
+    <div className="demo-stage">
+      {stage.map((p) => (
+        <div key={p.id} className="demo-tile">
+          <Avatar user={p} size={64} />
+          <span>{p.displayName}{p.role === 'host' ? ' · conduce' : ''}</span>
+        </div>
+      ))}
+      <p className="muted small">Nell'anteprima il video è spento: sul server vero qui vedi e senti chi parla.</p>
+    </div>
+  );
+}
+
 export default function RoomPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -110,7 +125,8 @@ export default function RoomPage() {
       )}
       {room.status === 'ended' && <div className="the-end"><strong>Questa Piazza è finita</strong></div>}
 
-      {room.status === 'live' && conn && (
+      {room.status === 'live' && conn?.token === 'demo' && <DemoStage stage={info.stage} />}
+      {room.status === 'live' && conn && conn.token !== 'demo' && (
         <LiveKitRoom key={conn.token} serverUrl={conn.livekitUrl} token={conn.token} connect video={canPublish} audio={canPublish} className="lk-room" data-lk-theme="default">
           <div className="room-main">
             <Stage />
@@ -123,7 +139,7 @@ export default function RoomPage() {
 
       {room.status === 'live' && (
         <footer className="room-actions">
-          <button className="btn ghost" onClick={() => setShowChat(!showChat)}>{showChat ? 'Nascondi chat' : '💬 Chat'}</button>
+          {conn?.token !== 'demo' && <button className="btn ghost" onClick={() => setShowChat(!showChat)}>{showChat ? 'Nascondi chat' : '💬 Chat'}</button>}
           {me.role === 'audience' && (me.handRaised
             ? <button className="btn ghost" onClick={() => act(`/rooms/${id}/hand`, 'DELETE')}>Abbassa la mano</button>
             : <button className="btn" onClick={() => act(`/rooms/${id}/hand`)}>✋ Alza la mano</button>)}

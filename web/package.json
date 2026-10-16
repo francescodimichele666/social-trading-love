@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "build:demo": "tsc --noEmit && vite build --mode demo --base ./ --outDir dist-demo"
   },
   "dependencies": {
     "@livekit/components-react": "^2.9.24",
