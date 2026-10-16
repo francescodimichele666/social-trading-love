@@ -4,6 +4,8 @@ import assert from 'node:assert/strict';
 process.env.DATABASE_URL ??= 'postgres://stl:stl@localhost:5432/stl_test';
 process.env.LIVEKIT_SYNC = 'false';
 process.env.UPLOAD_DIR = '/tmp/stl-test-uploads';
+process.env.MAIL_TEST = '1';
+process.env.PUSH = 'false';
 
 const { pool } = await import('../src/db.js');
 const { migrate } = await import('../src/migrate.js');
@@ -30,7 +32,7 @@ async function call(method: string, url: string, token?: string, payload?: unkno
 
 const person = (username: string, inviteCode?: string) => ({
   email: `${username}@example.com`, password: 'password123', username, displayName: username.toUpperCase(),
-  birthDate: '1980-05-10', inviteCode, acceptRules: true,
+  birthDate: '1980-05-10', inviteCode, acceptRules: true, acceptTerms: true,
 });
 
 let admin = '', anna = '', bruno = '';
@@ -332,4 +334,85 @@ test('strumenti amministratori: numeri, rimozione immediata, riattivazione', asy
   assert.equal((await call('POST', `/api/admin/users/${elena.user.id}/reinstate`, anna, { statement: 'Prova di riattivazione.' })).status, 403);
   assert.equal((await call('POST', `/api/admin/users/${elena.user.id}/reinstate`, admin, { statement: 'Prova di riattivazione.' })).status, 200);
   assert.equal(ownerId > 0, true);
+});
+
+test('password dimenticata: link via email, nuova password, vecchi accessi annullati', async () => {
+  const { sentMails } = await import('../src/mail.js');
+  const fede = (await call('POST', '/api/register', undefined, person('fede'))).body;
+  sentMails.length = 0;
+  const unknown = await call('POST', '/api/password/forgot', undefined, { email: 'nessuno@example.com' });
+  assert.equal(unknown.status, 200);
+  assert.equal(sentMails.length, 0, 'nessuna email a chi non è iscritto, ma stessa risposta');
+
+  assert.equal((await call('POST', '/api/password/forgot', undefined, { email: 'fede@example.com' })).status, 200);
+  assert.equal(sentMails.length, 1);
+  const token = sentMails[0].text.match(/token=([\w-]+)/)![1];
+  assert.equal((await call('POST', '/api/password/reset', undefined, { token: 'x'.repeat(30), password: 'nuovapassword1' })).status, 400);
+
+  await new Promise((r) => setTimeout(r, 1100)); // i token durano al secondo
+  assert.equal((await call('POST', '/api/password/reset', undefined, { token, password: 'nuovapassword1' })).status, 200);
+  assert.equal((await call('POST', '/api/password/reset', undefined, { token, password: 'altrapassword1' })).status, 400, 'il link vale una volta sola');
+  assert.equal((await call('GET', '/api/me', fede.token)).status, 401, 'il vecchio accesso non vale più');
+  assert.equal((await call('POST', '/api/login', undefined, { login: 'fede', password: 'password123' })).status, 401);
+  assert.equal((await call('POST', '/api/login', undefined, { login: 'fede', password: 'nuovapassword1' })).status, 200);
+});
+
+test('iscrizione: serve il consenso a privacy e condizioni', async () => {
+  const res = await call('POST', '/api/register', undefined, { ...person('gino'), acceptTerms: false });
+  assert.equal(res.status, 400);
+  const ok = await call('POST', '/api/register', undefined, person('gino'));
+  assert.equal(ok.status, 201);
+  const me = await call('GET', '/api/me', ok.body.token);
+  assert.equal(me.body.user.termsVersion, me.body.currentTermsVersion);
+});
+
+test('impostazioni email e titolare: solo il proprietario', async () => {
+  const mail = { host: 'smtp.gmail.com', port: 465, secure: true, user: 'club@gmail.com', password: 'abcd efgh ijkl mnop', fromName: 'Love Trading Club', fromEmail: '' };
+  assert.equal((await call('PUT', '/api/owner/settings/mail', anna, mail)).status, 403);
+  assert.equal((await call('PUT', '/api/owner/settings/mail', admin, mail)).status, 200);
+  const s = await call('GET', '/api/owner/settings', admin);
+  assert.equal(s.body.mail.user, 'club@gmail.com');
+  assert.equal(s.body.mail.hasPassword, true);
+  assert.equal(s.body.mail.password, undefined, 'la password non torna mai indietro');
+  const { pool: p } = await import('../src/db.js');
+  const stored = (await p.query(`SELECT value FROM settings WHERE key = 'mail'`)).rows[0].value;
+  assert.notEqual(stored.password, mail.password, 'la password è salvata cifrata');
+  // Si può cambiare la casella senza riscrivere la password.
+  assert.equal((await call('PUT', '/api/owner/settings/mail', admin, { ...mail, user: 'altra@libero.it', host: 'smtp.libero.it', password: '' })).status, 200);
+  assert.equal((await call('GET', '/api/owner/settings', admin)).body.mail.hasPassword, true);
+
+  assert.equal((await call('PUT', '/api/owner/settings/legal', admin, { controllerName: 'Francesco Rossi', contactEmail: 'privacy@example.com', city: 'Roma' })).status, 200);
+  assert.equal((await call('GET', '/api/legal')).body.controllerName, 'Francesco Rossi');
+});
+
+test('notifiche sul telefono: chiave pubblica e iscrizione del dispositivo', async () => {
+  const key = await call('GET', '/api/push/key');
+  assert.match(key.body.publicKey, /^[\w-]{80,}$/);
+  assert.equal((await call('GET', '/api/push/key')).body.publicKey, key.body.publicKey, 'la chiave resta la stessa');
+  const sub = { endpoint: 'https://push.example.com/abc', keys: { p256dh: 'BPk', auth: 'xyz' } };
+  assert.equal((await call('POST', '/api/push/subscribe', anna, sub)).status, 200);
+  assert.equal((await call('POST', '/api/push/unsubscribe', anna, { endpoint: sub.endpoint })).status, 200);
+});
+
+test('privacy: scarica i tuoi dati ed elimina l\'account', async () => {
+  const hugo = (await call('POST', '/api/register', undefined, person('hugo'))).body;
+  await call('POST', '/api/posts', hugo.token, { body: 'Il mio primo post' });
+  const exp = await app.inject({ method: 'GET', url: '/api/me/export', headers: { authorization: `Bearer ${hugo.token}` } });
+  assert.equal(exp.statusCode, 200);
+  assert.match(String(exp.headers['content-disposition']), /attachment/);
+  assert.equal(exp.json().posts[0].body, 'Il mio primo post');
+  assert.equal(exp.json().account.email, 'hugo@example.com');
+
+  assert.equal((await call('POST', '/api/me/delete', admin, { password: 'password123' })).status, 400, 'il proprietario non si elimina');
+  assert.equal((await call('POST', '/api/me/delete', hugo.token, { password: 'sbagliata' })).status, 400);
+  assert.equal((await call('POST', '/api/me/delete', hugo.token, { password: 'password123' })).status, 200);
+  assert.equal((await call('GET', '/api/me', hugo.token)).status, 401);
+  assert.equal((await call('POST', '/api/login', undefined, { login: 'hugo', password: 'password123' })).status, 401);
+  assert.equal((await call('GET', '/api/users/hugo', admin)).status, 404);
+  const { pool: p } = await import('../src/db.js');
+  const row = (await p.query(`SELECT email, username FROM users WHERE id = $1`, [hugo.user.id])).rows[0];
+  assert.match(row.email, /^eliminato-/);
+  assert.equal((await p.query(`SELECT count(*)::int AS n FROM posts WHERE author_id = $1`, [hugo.user.id])).rows[0].n, 0);
+  // Si può iscrivere di nuovo con la stessa email.
+  assert.equal((await call('POST', '/api/register', undefined, person('hugo'))).status, 201);
 });

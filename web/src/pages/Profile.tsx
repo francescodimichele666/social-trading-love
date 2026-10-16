@@ -67,7 +67,12 @@ export default function Profile() {
     <div className="page">
       <section className="profile-head">
         <div className="profile-cover" aria-hidden="true" />
-        {data.isMe && <button className="icon-btn profile-logout" onClick={logout} aria-label="Esci"><Icon name="logout" /></button>}
+        {data.isMe && (
+          <div className="profile-tools">
+            <Link className="icon-btn" to="/account" aria-label="Account e privacy"><Icon name="settings" /></Link>
+            <button className="icon-btn" onClick={logout} aria-label="Esci"><Icon name="logout" /></button>
+          </div>
+        )}
         <button className="avatar-btn" disabled={!data.isMe} onClick={() => avatarInput.current?.click()} aria-label="Cambia foto">
           <Avatar user={u} size={88} />
         </button>

@@ -5,6 +5,7 @@ import { one, tx } from '../db.js';
 import { HttpError } from '../app.js';
 import { RULES, RULES_VERSION } from '../rules.js';
 import { config } from '../config.js';
+import { TERMS_VERSION } from '../legal.js';
 
 const registerSchema = z.object({
   email: z.string().trim().toLowerCase().email(),
@@ -14,6 +15,7 @@ const registerSchema = z.object({
   birthDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   inviteCode: z.string().trim().toUpperCase().optional(),
   acceptRules: z.literal(true, { message: 'Devi accettare le regole' }),
+  acceptTerms: z.literal(true, { message: "Devi accettare l'informativa privacy e le condizioni d'uso" }),
 });
 
 export function isAdult(birthDate: string, now = new Date()): boolean {
@@ -59,9 +61,9 @@ export default async function authRoutes(app: FastifyInstance) {
       if (taken.rows[0]) throw new HttpError(409, 'Email o nome utente già in uso');
 
       const { rows: [u] } = await c.query(
-        `INSERT INTO users (email, username, password_hash, display_name, birth_date, role, is_owner, invited_by, rules_version)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
-        [data.email, data.username, passwordHash, data.displayName, data.birthDate, first ? 'admin' : 'member', first, invitedBy, RULES_VERSION],
+        `INSERT INTO users (email, username, password_hash, display_name, birth_date, role, is_owner, invited_by, rules_version, terms_version, terms_accepted_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, now()) RETURNING *`,
+        [data.email, data.username, passwordHash, data.displayName, data.birthDate, first ? 'admin' : 'member', first, invitedBy, RULES_VERSION, TERMS_VERSION],
       );
       return u;
     });
@@ -72,7 +74,7 @@ export default async function authRoutes(app: FastifyInstance) {
 
   app.post('/login', { config: { rateLimit: { max: 20, timeWindow: '15 minutes' } } }, async (req) => {
     const { login, password } = z.object({ login: z.string().trim().toLowerCase(), password: z.string() }).parse(req.body);
-    const user = await one('SELECT * FROM users WHERE email = $1 OR username = $1', [login]);
+    const user = await one('SELECT * FROM users WHERE (email = $1 OR username = $1) AND deleted_at IS NULL', [login]);
     if (!user || !(await bcrypt.compare(password, user.password_hash))) throw new HttpError(401, 'Credenziali non corrette');
     if (user.banned_at) throw new HttpError(403, `Account sospeso: ${user.ban_reason ?? ''}`.trim());
     return { token: app.jwt.sign({ id: user.id }), user: publicUser(user) };
@@ -81,6 +83,6 @@ export default async function authRoutes(app: FastifyInstance) {
   app.get('/me', { preHandler: app.authenticate }, async (req) => {
     const user = await one('SELECT * FROM users WHERE id = $1', [req.user.id]);
     const unread = await one<{ n: number }>('SELECT count(*)::int AS n FROM notifications WHERE user_id = $1 AND read_at IS NULL', [req.user.id]);
-    return { user: { ...publicUser(user), email: user.email }, unreadNotifications: unread?.n ?? 0 };
+    return { user: { ...publicUser(user), email: user.email, termsVersion: user.terms_version }, currentTermsVersion: TERMS_VERSION, unreadNotifications: unread?.n ?? 0 };
   });
 }

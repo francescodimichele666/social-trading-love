@@ -59,6 +59,9 @@ const reports = [
   { id: 1, targetType: 'post', targetId: 99, reasonLabel: 'Frasi a rischio (automatico)', details: 'Segnalato in automatico: contiene frasi tipiche di promesse di guadagno o truffe', createdAt: ago(15), reporter: 'sistema automatico', target: { ownerId: 9, preview: 'Entra nel mio gruppo VIP: guadagno sicuro del 20% al mese! Scrivimi in privato.' } },
 ];
 
+let mailSettings: any = null;
+const legal = { controllerName: 'Francesco', contactEmail: 'privacy@esempio.it', city: '' };
+
 const suspended = [
   { id: 9, username: 'guru_vip', displayName: 'Guru VIP', avatarUrl: null, role: 'member' as const, suspendedAt: ago(1500), reason: 'Chiedeva soldi in privato per un "gruppo VIP" con segnali garantiti.' },
 ];
@@ -189,12 +192,29 @@ export async function demoApi(path: string, method: string, body: any): Promise<
     reports.splice(reports.findIndex((r) => r.id === Number(match![1])), 1);
     return { done: true };
   }
+  // Account, privacy e impostazioni del proprietario (nell'anteprima non parte nessuna email).
+  if (route === '/legal') return { termsVersion: '2026-10-16', ...legal };
+  if (route === '/owner/settings' ) return { mail: mailSettings, legal };
+  if (route === '/owner/settings/mail') {
+    if (!body.password && !mailSettings) throw new DemoError(400, 'Inserisci la password della casella');
+    mailSettings = { host: body.host, port: body.port, secure: body.secure, user: body.user, fromName: body.fromName, fromEmail: body.fromEmail, hasPassword: true };
+    return { saved: true };
+  }
+  if (route === '/owner/settings/mail/test') return { message: "Nell'anteprima non parte nessuna email: sul tuo server arriverà a francesco@esempio.it." };
+  if (route === '/owner/settings/legal') { Object.assign(legal, body); return { saved: true }; }
+  if (route === '/password/forgot') return { message: "Se l'email è iscritta, ti abbiamo mandato un link per scegliere una nuova password. Controlla anche lo spam." };
+  if (route === '/password/reset') return { message: 'Password cambiata. Ora puoi entrare con la nuova password.' };
+  if (route === '/me/password') return { token: 'demo' };
+  if (route === '/me/export') return { exportedAt: new Date().toISOString(), account: { ...user(ME), email: 'francesco@esempio.it' }, posts: posts.filter((p) => p.authorId === ME).map((p) => ({ id: p.id, body: p.body, createdAt: p.createdAt })) };
+  if (route === '/me/delete') throw new DemoError(400, "Il proprietario non può eliminare il proprio account: è necessario per gestire la comunità");
+  if (route.startsWith('/push/')) return { ok: true };
   if (route === '/admin/stats') {
     const signups = signupCounts.map((count, i) => ({ day: new Date(now - (13 - i) * 86400000).toISOString().slice(0, 10), count }));
     return {
       members: 57 + users.length, newMembers7d: signupCounts.slice(7).reduce((a, b) => a + b, 0), active7d: 34, suspended: suspended.length,
       staff: users.filter((u) => u.role !== 'member').length, posts: 180 + posts.length, posts7d: 41, videos: posts.filter((p) => p.mediaType === 'video').length + 6,
       comments: 412, liveRooms: rooms.filter((r) => r.status === 'live').length, rooms7d: 5, openReports: reports.length, signups,
+      lastBackup: new Date(now - 5 * 3600000).toISOString(),
     };
   }
   if (route === '/admin/suspended') return { users: suspended };

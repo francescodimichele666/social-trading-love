@@ -29,8 +29,11 @@ services:
       LIVEKIT_URL: wss://${LIVE_DOMAIN}
       LIVEKIT_API_KEY: ${LIVEKIT_API_KEY}
       LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET}
+      PUBLIC_URL: https://${DOMAIN}
+      BACKUP_DIR: /backups
     volumes:
       - uploads:/data/uploads
+      - ./backups:/backups:ro
 
   livekit:
     image: livekit/livekit-server:v1.9
@@ -56,6 +59,28 @@ services:
       - "443:443"
     volumes:
       - caddy-data:/data
+
+  # Backup automatico: database e foto/video nella cartella "backups" accanto a questo file.
+  # Il primo parte subito, poi ogni notte alle 3. I database più vecchi di 14 giorni si cancellano da soli.
+  backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    entrypoint: ["sh", "/backup.sh"]
+    environment:
+      PGHOST: db
+      PGUSER: stl
+      PGDATABASE: stl
+      PGPASSWORD: ${DB_PASSWORD}
+      TZ: CET-1CEST,M3.5.0,M10.5.0/3
+      BACKUP_HOUR: "3"
+      KEEP_DAYS: "14"
+    volumes:
+      - ./backup/backup.sh:/backup.sh:ro
+      - ./backups:/backups
+      - uploads:/data/uploads:ro
 
   # Facoltativo: tiene aggiornato l'indirizzo gratuito DuckDNS se l'IP di casa cambia.
   # Si accende solo con:  docker compose --profile duckdns up -d

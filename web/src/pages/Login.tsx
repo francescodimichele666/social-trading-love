@@ -36,6 +36,7 @@ export default function Login() {
       <label>Password<input id="password" type="password" autoComplete="current-password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required /></label>
       {error && <p className="error">{error}</p>}
       <button className="btn big" disabled={busy}>Entra</button>
+      <Link className="small-link" to="/password-dimenticata">Ho dimenticato la password</Link>
       <Link className="small-link" to="/iscriviti">Non hai un account? Iscriviti gratis</Link>
     </form>
   );

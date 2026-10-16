@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { api, timeAgo } from '../api';
 import { useAuth } from '../auth';
 import Icon from '../components/Icon';
+import PushCard from '../components/PushCard';
 
 type Note = { id: number; kind: string; message: string; link: string | null; read: boolean; createdAt: string };
 const ICONS: Record<string, [string, string]> = { room_live: ['live', 'coral'], comment: ['comment', 'teal'], follow: ['user', 'violet'], invite_reward: ['gift', 'violet'], moderation: ['shield', 'gold'], role: ['shield', 'teal'] };
@@ -22,6 +23,7 @@ export default function Notifications() {
   return (
     <div className="page">
       <h1 className="title">Avvisi</h1>
+      <PushCard compact />
       {notes.length === 0 && <p className="muted center">Nessun avviso per ora.</p>}
       {notes.map((n) => {
         const [ico, tone] = ICONS[n.kind] ?? ['bell', 'teal'];

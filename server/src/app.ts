@@ -15,6 +15,7 @@ import postRoutes from './routes/posts.js';
 import roomRoutes from './routes/rooms.js';
 import moderationRoutes from './routes/moderation.js';
 import adminRoutes from './routes/admin.js';
+import accountRoutes from './routes/account.js';
 import notificationRoutes from './routes/notifications.js';
 
 export type AuthUser = { id: number; role: 'member' | 'moderator' | 'admin'; username: string; isOwner: boolean };
@@ -54,14 +55,18 @@ export async function buildApp(opts: { logger?: boolean; rateLimit?: boolean } =
 
   // Verifica il token e ricarica l'utente: così un utente bloccato perde subito l'accesso.
   app.decorate('authenticate', async (req: FastifyRequest) => {
-    let payload: { id: number };
+    let payload: { id: number; iat?: number };
     try {
-      payload = await req.jwtVerify<{ id: number }>();
+      payload = await req.jwtVerify<{ id: number; iat?: number }>();
     } catch {
       throw new HttpError(401, 'Accesso richiesto');
     }
-    const user = await one('SELECT id, role, username, is_owner, banned_at FROM users WHERE id = $1', [payload.id]);
-    if (!user) throw new HttpError(401, 'Accesso richiesto');
+    const user = await one('SELECT id, role, username, is_owner, banned_at, deleted_at, password_changed_at FROM users WHERE id = $1', [payload.id]);
+    if (!user || user.deleted_at) throw new HttpError(401, 'Accesso richiesto');
+    // Dopo un cambio password valgono solo gli accessi fatti dopo.
+    if (user.password_changed_at && payload.iat && payload.iat < Math.floor(user.password_changed_at.getTime() / 1000)) {
+      throw new HttpError(401, 'La password è cambiata: entra di nuovo');
+    }
     if (user.banned_at) throw new HttpError(403, 'Account sospeso');
     req.user = { id: user.id, role: user.role, username: user.username, isOwner: user.is_owner };
   });
@@ -81,6 +86,8 @@ export async function buildApp(opts: { logger?: boolean; rateLimit?: boolean } =
       return reply.status(400).send({ error: 'Dati non validi', details: err.issues.map((i) => `${i.path.join('.')}: ${i.message}`) });
     }
     const status = err.statusCode ?? 500;
+    // I nostri errori hanno sempre un messaggio pensato per le persone, anche quelli 5xx (es. email non partita).
+    if (err instanceof HttpError) return reply.status(status).send({ error: err.message });
     if (status >= 500) app.log.error(err);
     return reply.status(status).send({ error: status >= 500 ? 'Errore interno' : err.message });
   });
@@ -93,6 +100,7 @@ export async function buildApp(opts: { logger?: boolean; rateLimit?: boolean } =
   await app.register(roomRoutes, { prefix: '/api' });
   await app.register(moderationRoutes, { prefix: '/api' });
   await app.register(adminRoutes, { prefix: '/api' });
+  await app.register(accountRoutes, { prefix: '/api' });
   await app.register(notificationRoutes, { prefix: '/api' });
 
   return app;

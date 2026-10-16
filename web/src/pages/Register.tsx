@@ -10,7 +10,7 @@ export default function Register() {
   const [params] = useSearchParams();
   const friendCode = params.get('invito') ?? '';
   const [firstUser, setFirstUser] = useState(false);
-  const [form, setForm] = useState({ displayName: '', username: '', email: '', password: '', birthDate: '', acceptRules: false });
+  const [form, setForm] = useState({ displayName: '', username: '', email: '', password: '', birthDate: '', acceptRules: false, acceptTerms: false });
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -49,6 +49,10 @@ export default function Register() {
       <label className="check">
         <input id="acceptRules" type="checkbox" checked={form.acceptRules} onChange={set('acceptRules')} required />
         <span>Ho almeno 18 anni e accetto le <Link to="/regole" target="_blank">regole della comunità</Link></span>
+      </label>
+      <label className="check">
+        <input id="acceptTerms" type="checkbox" checked={form.acceptTerms} onChange={set('acceptTerms')} required />
+        <span>Ho letto l'<Link to="/privacy" target="_blank">informativa privacy</Link> e accetto le <Link to="/condizioni" target="_blank">condizioni d'uso</Link></span>
       </label>
       {error && <p className="error">{error}</p>}
       <button className="btn big" disabled={busy}>Crea il mio account</button>

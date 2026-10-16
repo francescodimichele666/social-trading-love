@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { one, query } from '../db.js';
 import { HttpError } from '../app.js';
+import { sendPush } from '../push.js';
 import { config } from '../config.js';
 import { hasRedFlags } from '../rules.js';
 import { rewardInviterOnce } from '../invites.js';
@@ -174,9 +175,12 @@ export default async function roomRoutes(app: FastifyInstance) {
 }
 
 async function notifyFollowers(hostId: number, username: string, roomId: number, title: string) {
-  await query(
+  const message = `@${username} è in diretta: ${title}`;
+  const link = `/piazze/${roomId}`;
+  const { rows } = await query(
     `INSERT INTO notifications (user_id, kind, message, link)
-     SELECT follower_id, 'room_live', $2, $3 FROM follows WHERE followed_id = $1`,
-    [hostId, `@${username} è in diretta: ${title}`, `/piazze/${roomId}`],
+     SELECT follower_id, 'room_live', $2, $3 FROM follows WHERE followed_id = $1 RETURNING user_id`,
+    [hostId, message, link],
   );
+  setImmediate(() => { for (const r of rows) sendPush(r.user_id, message, link).catch(() => {}); });
 }

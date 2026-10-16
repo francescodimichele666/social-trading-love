@@ -4,6 +4,21 @@ import { one, query, tx } from '../db.js';
 import { HttpError } from '../app.js';
 import { notify } from '../notify.js';
 import { closeLiveRoom } from '../livekit.js';
+import { readdir, stat } from 'node:fs/promises';
+import path from 'node:path';
+import { config } from '../config.js';
+
+// Data dell'ultimo backup del database fatto dal servizio "backup" (null se non configurato o mai fatto).
+async function lastBackup(): Promise<string | null> {
+  if (!config.backupDir) return null;
+  try {
+    const files = (await readdir(config.backupDir)).filter((f) => /^db-.*\.dump$/.test(f));
+    const times = await Promise.all(files.map(async (f) => (await stat(path.join(config.backupDir, f))).mtime.getTime()));
+    return times.length ? new Date(Math.max(...times)).toISOString() : null;
+  } catch {
+    return null;
+  }
+}
 
 // Strumenti riservati agli amministratori (e quindi anche al proprietario).
 const statement = z.string().trim().min(10, 'Scrivi una motivazione chiara (almeno 10 caratteri)').max(1000);
@@ -16,12 +31,12 @@ export default async function adminRoutes(app: FastifyInstance) {
     const n = await one(`
       SELECT
         (SELECT count(*)::int FROM users WHERE banned_at IS NULL) AS members,
-        (SELECT count(*)::int FROM users WHERE created_at > now() - interval '7 days') AS new_members_7d,
+        (SELECT count(*)::int FROM users WHERE created_at > now() - interval '7 days' AND deleted_at IS NULL) AS new_members_7d,
         (SELECT count(DISTINCT author_id)::int FROM (
            SELECT author_id FROM posts WHERE created_at > now() - interval '7 days'
            UNION ALL SELECT author_id FROM comments WHERE created_at > now() - interval '7 days'
            UNION ALL SELECT user_id FROM likes WHERE created_at > now() - interval '7 days') a) AS active_7d,
-        (SELECT count(*)::int FROM users WHERE banned_at IS NOT NULL) AS suspended,
+        (SELECT count(*)::int FROM users WHERE banned_at IS NOT NULL AND deleted_at IS NULL) AS suspended,
         (SELECT count(*)::int FROM users WHERE role <> 'member' AND banned_at IS NULL) AS staff,
         (SELECT count(*)::int FROM posts WHERE removed_at IS NULL) AS posts,
         (SELECT count(*)::int FROM posts WHERE removed_at IS NULL AND created_at > now() - interval '7 days') AS posts_7d,
@@ -39,6 +54,7 @@ export default async function adminRoutes(app: FastifyInstance) {
       posts: n.posts, posts7d: n.posts_7d, videos: n.videos, comments: n.comments,
       liveRooms: n.live_rooms, rooms7d: n.rooms_7d, openReports: n.open_reports,
       signups: rows,
+      lastBackup: await lastBackup(),
     };
   });
 
@@ -46,7 +62,7 @@ export default async function adminRoutes(app: FastifyInstance) {
   app.get('/admin/suspended', async () => {
     const { rows } = await query(
       `SELECT u.id, u.username, u.display_name, u.avatar_url, u.role, u.banned_at, u.ban_reason
-       FROM users u WHERE u.banned_at IS NOT NULL ORDER BY u.banned_at DESC`,
+       FROM users u WHERE u.banned_at IS NOT NULL AND u.deleted_at IS NULL ORDER BY u.banned_at DESC`,
     );
     return {
       users: rows.map((u) => ({
@@ -59,7 +75,7 @@ export default async function adminRoutes(app: FastifyInstance) {
   // Riattiva un account sospeso. Moderatori e amministratori li riattiva solo il proprietario.
   app.post<{ Params: { id: string } }>('/admin/users/:id/reinstate', async (req) => {
     const body = z.object({ statement }).parse(req.body);
-    const target = await one('SELECT id, role, banned_at FROM users WHERE id = $1', [Number(req.params.id)]);
+    const target = await one('SELECT id, role, banned_at FROM users WHERE id = $1 AND deleted_at IS NULL', [Number(req.params.id)]);
     if (!target) throw new HttpError(404, 'Utente non trovato');
     if (!target.banned_at) throw new HttpError(400, 'Questo account non è sospeso');
     if (target.role !== 'member' && !req.user.isOwner) throw new HttpError(403, 'Solo il proprietario può riattivare moderatori e amministratori');

@@ -9,6 +9,7 @@ type Stats = {
   members: number; newMembers7d: number; active7d: number; suspended: number; staff: number;
   posts: number; posts7d: number; videos: number; comments: number; liveRooms: number; rooms7d: number; openReports: number;
   signups: Array<{ day: string; count: number }>;
+  lastBackup: string | null;
 };
 type Suspended = Pick<User, 'id' | 'username' | 'displayName' | 'avatarUrl' | 'role'> & { suspendedAt: string; reason: string | null };
 
@@ -37,6 +38,20 @@ function Signups({ days }: { days: Stats['signups'] }) {
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+// Il backup gira ogni notte: se l'ultimo ha più di due giorni qualcosa non va.
+function BackupStatus({ at }: { at: string | null }) {
+  const old = !at || Date.now() - new Date(at).getTime() > 2 * 86400000;
+  return (
+    <div className={`card backup-card ${old ? 'warn' : ''}`}>
+      <Icon name={old ? 'flag' : 'check'} size={20} />
+      <span>
+        <strong>{at ? `Ultimo backup ${timeAgo(at)}` : 'Nessun backup trovato'}</strong>
+        <small>{old ? 'Controlla che il PC del server sia acceso e che il servizio backup sia attivo (vedi la guida).' : 'Database e foto/video sono salvati nella cartella backups ogni notte.'}</small>
+      </span>
     </div>
   );
 }
@@ -101,6 +116,7 @@ export default function Admin() {
               <Icon name="flag" /> <span><strong>{stats.openReports} {stats.openReports === 1 ? 'segnalazione aperta' : 'segnalazioni aperte'}</strong><small>Tocca per decidere</small></span>
             </Link>
           )}
+          <BackupStatus at={stats.lastBackup} />
           <h2 className="section-title">Persone</h2>
           <div className="tiles">
             <Tile label="Iscritti" value={stats.members} hint={`+${stats.newMembers7d} in 7 giorni`} tone="teal" />

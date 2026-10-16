@@ -20,6 +20,7 @@ La comunità gratuita del trading responsabile: post, video, Piazze live con fin
 - Piazze live: video e audio, fino a 6 persone sul palco, il pubblico alza la mano, chi conduce fa salire e scendere, chat.
 - Trading responsabile: le frasi tipiche delle truffe ("guadagno sicuro", "gruppo VIP"...) mandano il contenuto in revisione.
 - Segnalazioni e pannello di moderazione: ogni decisione arriva alla persona con la motivazione (Digital Services Act).
+- Pronti per il pubblico: informativa privacy e condizioni d'uso con consenso all'iscrizione, "ho dimenticato la password" via email dalla casella del proprietario, notifiche sul telefono (Web Push, chiavi create da sole), scarica i tuoi dati ed elimina l'account, backup automatico ogni notte.
 - Pannello amministratore (solo per gli amministratori): numeri della comunità e iscrizioni degli ultimi 14 giorni, rimozione immediata di post e commenti con motivazione, elenco degli account sospesi e riattivazione. Moderatori e amministratori sospesi li riattiva solo il proprietario.
 
 ## Mettere online sul tuo server (passo passo)
@@ -53,10 +54,9 @@ Ti serve: un server Linux (Ubuntu va benissimo) con almeno 2 GB di RAM, raggiung
 
 Comandi utili: `docker compose logs -f api` (vedere cosa succede), `docker compose down` (spegnere), `git pull && docker compose up -d --build` (aggiornare).
 
-**Backup del database** (da fare ogni giorno, per esempio con cron):
-```
-docker compose exec db pg_dump -U stl stl > backup-$(date +%F).sql
-```
+**Backup automatico**: il servizio `backup` salva ogni notte alle 3 il database (`backups/db-AAAA-MM-GG.dump`, ultimi 14 giorni) e le foto/video (`backups/uploads`). Copia la cartella `backups` anche fuori dal server. Come ripristinare: vedi GUIDA-WINDOWS.md.
+
+**Dopo il primo accesso** (solo il proprietario): Profilo, ingranaggio, Impostazioni del proprietario. Imposta la casella email da cui partono le email (Gmail, Libero, Aruba o qualsiasi SMTP) e i dati del titolare per l'informativa privacy.
 
 ## Sviluppo sul computer
 

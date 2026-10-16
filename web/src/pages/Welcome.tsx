@@ -36,6 +36,7 @@ export default function Welcome() {
         </article>
       </section>
       <Link className="small-link" to="/regole">Leggi le regole della comunità</Link>
+      <p className="legal-links"><Link to="/privacy">Privacy</Link> · <Link to="/condizioni">Condizioni d'uso</Link></p>
     </div>
   );
 }

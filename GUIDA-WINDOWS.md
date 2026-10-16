@@ -95,14 +95,47 @@ cd C:\social-trading-love
 docker compose --profile duckdns up -d --build
 ```
 
-## Backup
+## Passo 8. Imposta l'email di invio e i dati per la privacy
 
-Una volta al giorno (o almeno a settimana) salva il database:
+Serve perché i membri possano recuperare la password da soli e perché l'informativa privacy dica chi sei. Lo fai una volta sola, dall'app.
+
+1. Crea (o scegli) la casella da cui partiranno le email. Va bene anche una nuova Gmail, per esempio `lovetradingclub@gmail.com`.
+2. **Solo se è Gmail:** apri myaccount.google.com, vai su **Sicurezza**, attiva la **Verifica in due passaggi**, poi cerca **Password per le app**, creane una chiamata "Love Trading Club" e copia le 16 lettere. Questa è la password da usare nell'app, non quella normale di Gmail.
+3. Nell'app vai su **Profilo**, tocca l'ingranaggio, poi **Impostazioni del proprietario**.
+4. In **Email di invio** scegli il tipo di casella (Gmail, Libero, Aruba o Altro), scrivi indirizzo e password e premi **Salva e manda una email di prova**. Se la ricevi, è tutto a posto.
+5. In **Titolare per la privacy** scrivi nome e cognome, l'email per le questioni di privacy e la città, poi **Salva**.
+
+Puoi cambiare la casella quando vuoi ripetendo il punto 4. La password viene salvata cifrata sul tuo PC e non si vede mai.
+
+## Passo 9. Attiva le notifiche sul telefono
+
+- **Android:** nell'app vai su **Avvisi** e tocca **Attiva**.
+- **iPhone:** le notifiche funzionano solo dall'app installata. In Safari tocca **Condividi** e poi **Aggiungi alla schermata Home**, apri l'app dall'icona, poi **Avvisi** e **Attiva**.
+
+Lo stesso vale per ogni membro: lo trova anche in **Profilo**, ingranaggio, **Notifiche**.
+
+## Backup automatico
+
+Non devi fare niente: il servizio **backup** salva tutto da solo nella cartella `C:\social-trading-love\backups`.
+
+- Il primo backup parte all'avvio, poi uno ogni notte alle 3.
+- `db-AAAA-MM-GG.dump` è il database del giorno. Si tengono gli ultimi 14 giorni.
+- La cartella `uploads` contiene tutte le foto e i video.
+- Nel **Pannello amministratore** vedi quando è stato fatto l'ultimo backup. Se compare in giallo, il PC era spento o il servizio è fermo: lancia `docker compose up -d` nella cartella.
+
+**Importante:** il backup sta sullo stesso PC. Almeno una volta a settimana copia la cartella `backups` su una chiavetta o un disco esterno. Puoi anche farlo in automatico mettendo la cartella dentro OneDrive o Google Drive.
+
+### Ripristinare un backup (solo se si rompe qualcosa)
+
+In PowerShell, nella cartella del social, sostituisci la data con quella che vuoi:
 
 ```
 cd C:\social-trading-love
-docker compose exec -T db pg_dump -U stl -f /tmp/backup.sql stl
-docker compose cp db:/tmp/backup.sql .\backup.sql
+docker compose stop api
+docker compose cp .\backups\db-2026-10-16.dump db:/tmp/ripristino.dump
+docker compose exec db pg_restore -U stl -d stl --clean --if-exists /tmp/ripristino.dump
+docker compose cp .\backups\uploads\. api:/data/uploads/
+docker compose start api
 ```
 
-Copia `backup.sql` su una chiavetta o su un cloud. Le foto e i video caricati stanno nel volume Docker `uploads`.
+Se qualcosa non ti è chiaro, scrivi a Claude prima di farlo.

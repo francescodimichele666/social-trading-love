@@ -15,6 +15,10 @@ import Invites from './pages/Invites';
 import Notifications from './pages/Notifications';
 import Moderation from './pages/Moderation';
 import Admin from './pages/Admin';
+import Account from './pages/Account';
+import OwnerSettings from './pages/OwnerSettings';
+import { Privacy, Terms } from './pages/Legal';
+import { ForgotPassword, ResetPassword } from './pages/Password';
 import Rules from './pages/Rules';
 
 // La parte video (LiveKit) è pesante: si scarica solo quando si entra in una Piazza.
@@ -38,6 +42,10 @@ export default function App() {
           <Route path="/entra" element={<Login />} />
           <Route path="/iscriviti" element={<Register />} />
           <Route path="/regole" element={<Rules />} />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/condizioni" element={<Terms />} />
+          <Route path="/password-dimenticata" element={<ForgotPassword />} />
+          <Route path="/reimposta-password" element={<ResetPassword />} />
           <Route path="*" element={<Navigate to={`/entra?dopo=${encodeURIComponent(location.pathname)}`} replace />} />
         </Routes>
       </>
@@ -60,6 +68,11 @@ export default function App() {
           <Route path="/moderazione" element={me.role === 'member' ? <Navigate to="/" /> : <Moderation />} />
           <Route path="/admin" element={me.role === 'admin' ? <Admin /> : <Navigate to="/" />} />
           <Route path="/regole" element={<Rules />} />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/condizioni" element={<Terms />} />
+          <Route path="/account" element={<Account />} />
+          <Route path="/impostazioni" element={me.isOwner ? <OwnerSettings /> : <Navigate to="/" />} />
+          <Route path="/reimposta-password" element={<ResetPassword />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

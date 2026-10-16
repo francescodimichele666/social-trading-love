@@ -22,5 +22,9 @@ export const config = {
   livekitSync: process.env.LIVEKIT_SYNC !== 'false',
   // Se impostata, solo questa email può diventare il primo iscritto (il proprietario).
   ownerEmail: (process.env.OWNER_EMAIL ?? '').trim().toLowerCase(),
+  // Indirizzo pubblico del sito, usato nei link delle email (es. https://lovetrading.duckdns.org).
+  publicUrl: process.env.PUBLIC_URL ?? '',
+  // Cartella dei backup, per mostrare nel pannello quando è stato fatto l'ultimo.
+  backupDir: process.env.BACKUP_DIR ?? '',
   corsOrigin: process.env.CORS_ORIGIN ?? true,
 };
