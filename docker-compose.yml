@@ -1,0 +1,62 @@
+# Avvio completo: database, server, video live e sito con HTTPS.
+# Uso: copia .env.example in .env, compila i valori, poi `docker compose up -d --build`
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: stl
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: stl
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U stl"]
+      interval: 5s
+      retries: 10
+
+  api:
+    build: ./server
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://stl:${DB_PASSWORD}@db:5432/stl
+      JWT_SECRET: ${JWT_SECRET}
+      UPLOAD_DIR: /data/uploads
+      LIVEKIT_URL: wss://${LIVE_DOMAIN}
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET}
+    volumes:
+      - uploads:/data/uploads
+
+  livekit:
+    image: livekit/livekit-server:v1.9
+    restart: unless-stopped
+    command: --config /etc/livekit.yaml
+    environment:
+      LIVEKIT_KEYS: "${LIVEKIT_API_KEY}: ${LIVEKIT_API_SECRET}"
+    volumes:
+      - ./livekit.yaml:/etc/livekit.yaml:ro
+    ports:
+      - "7881:7881"
+      - "50000-50100:50000-50100/udp"
+
+  web:
+    build: ./web
+    restart: unless-stopped
+    depends_on: [api, livekit]
+    environment:
+      DOMAIN: ${DOMAIN}
+      LIVE_DOMAIN: ${LIVE_DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - caddy-data:/data
+
+volumes:
+  db-data:
+  uploads:
+  caddy-data:

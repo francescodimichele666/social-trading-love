@@ -1,0 +1,20 @@
+// Tutte le impostazioni arrivano dalle variabili d'ambiente (vedi .env.example).
+function required(name: string, fallback?: string): string {
+  const value = process.env[name] ?? fallback;
+  if (value === undefined || value === '') throw new Error(`Variabile d'ambiente mancante: ${name}`);
+  return value;
+}
+
+export const config = {
+  port: Number(process.env.PORT ?? 3000),
+  databaseUrl: required('DATABASE_URL', 'postgres://stl:stl@localhost:5432/stl'),
+  jwtSecret: required('JWT_SECRET', process.env.NODE_ENV === 'production' ? undefined : 'dev-secret-cambiami'),
+  uploadDir: process.env.UPLOAD_DIR ?? './uploads',
+  maxUploadMb: Number(process.env.MAX_UPLOAD_MB ?? 50),
+  livekitUrl: process.env.LIVEKIT_URL ?? 'ws://localhost:7880',
+  livekitApiKey: process.env.LIVEKIT_API_KEY ?? 'devkey',
+  livekitApiSecret: process.env.LIVEKIT_API_SECRET ?? 'devsecret-cambiami-con-almeno-32-caratteri',
+  // false nei test o se LiveKit non è ancora installato: i permessi si aggiornano al prossimo ingresso.
+  livekitSync: process.env.LIVEKIT_SYNC !== 'false',
+  corsOrigin: process.env.CORS_ORIGIN ?? true,
+};
