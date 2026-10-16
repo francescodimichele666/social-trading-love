@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { api, type Trade } from '../api';
 import Icon from '../components/Icon';
 import TradeCard, { EMOTION_LABELS, MARKET_LABELS, num, signed } from '../components/TradeCard';
@@ -48,7 +48,7 @@ const closingBody = (f: CloseForm) => ({
   exitPrice: toNum(f.exitPrice), lesson: f.lesson, emotion: f.emotion || null, followedPlan: f.followedPlan, movedStop: f.movedStop,
 });
 
-function NewTrade({ onSaved, onCancel }: { onSaved: (warning: string | null) => void; onCancel: () => void }) {
+function NewTrade({ onSaved, onCancel }: { onSaved: (warning: string | null, postId: number) => void; onCancel: () => void }) {
   const [f, setF] = useState({ symbol: '', market: 'azioni', direction: 'long' as 'long' | 'short', entryPrice: '', stopLoss: '', takeProfit: '', riskPercent: '1', plan: '' });
   const [alreadyClosed, setAlreadyClosed] = useState(false);
   const [close, setClose] = useState(emptyClose);
@@ -66,8 +66,8 @@ function NewTrade({ onSaved, onCancel }: { onSaved: (warning: string | null) => 
     try {
       const body: any = { symbol: f.symbol, market: f.market, direction: f.direction, entryPrice: entry, stopLoss: stop, takeProfit: tp, riskPercent: risk, plan: f.plan };
       if (alreadyClosed) Object.assign(body, closingBody(close));
-      const res = await api<{ trade: Trade; warning: string | null }>('/journal', { body });
-      onSaved(res.warning);
+      const res = await api<{ trade: Trade; postId: number; warning: string | null }>('/journal', { body });
+      onSaved(res.warning, res.postId);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -106,7 +106,7 @@ function NewTrade({ onSaved, onCancel }: { onSaved: (warning: string | null) => 
       {error && <p className="error">{error}</p>}
       <div className="row">
         <button type="button" className="btn ghost" onClick={onCancel}>Annulla</button>
-        <button className="btn" disabled={busy}>{busy ? 'Salvo…' : 'Salva nel diario'}</button>
+        <button className="btn" disabled={busy}>{busy ? 'Salvo…' : 'Salva e pubblica'}</button>
       </div>
     </form>
   );
@@ -142,7 +142,9 @@ function TradeItem({ t, onChange }: { t: Trade; onChange: () => void }) {
         <small className="muted">{new Date(t.closedAt ?? t.openedAt).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}</small>
         <span className="spacer" />
         {t.status === 'open' && <button className="btn small" onClick={() => setMode(mode === 'close' ? '' : 'close')}>Chiudi operazione</button>}
-        <button className={`btn small ${t.status === 'closed' ? '' : 'ghost'}`} onClick={() => setMode(mode === 'share' ? '' : 'share')}><Icon name="share" size={16} /> Pubblica</button>
+        {t.postId
+          ? <Link className="btn small ghost" to={`/post/${t.postId}`}><Icon name="comment" size={16} /> Vedi il post</Link>
+          : <button className="btn small ghost" onClick={() => setMode(mode === 'share' ? '' : 'share')}><Icon name="share" size={16} /> Pubblica</button>}
         <button className="icon-btn" onClick={remove} aria-label="Elimina"><Icon name="trash" size={18} /></button>
       </div>
       {mode === 'close' && (
@@ -168,6 +170,7 @@ export default function Journal() {
   const [params, setParams] = useSearchParams();
   const [data, setData] = useState<{ trades: Trade[]; stats: Stats } | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
+  const [savedPost, setSavedPost] = useState<number | null>(null);
   const adding = params.get('nuova') === '1';
   const setAdding = (on: boolean) => setParams(on ? { nuova: '1' } : {}, { replace: true });
 
@@ -186,13 +189,19 @@ export default function Journal() {
         <h1 className="title">Il mio diario</h1>
         <button className={`btn ${adding ? 'ghost' : ''}`} onClick={() => setAdding(!adding)}>{adding ? 'Chiudi' : <><Icon name="plus" size={18} /> Nuova</>}</button>
       </header>
-      <p className="muted">Lo vedi solo tu. Decidi tu se condividere una singola operazione nel feed.</p>
+      <p className="muted">Ogni operazione che salvi va subito nel feed: tutti vedono livelli, rischio in percentuale e lezione, mai importi in euro. Quando la chiudi, il post si aggiorna da solo con il risultato.</p>
 
-      {adding && <NewTrade onCancel={() => setAdding(false)} onSaved={(w) => { setWarning(w); setAdding(false); load(); }} />}
+      {adding && <NewTrade onCancel={() => setAdding(false)} onSaved={(w, postId) => { setWarning(w); setSavedPost(postId); setAdding(false); load(); }} />}
+      {savedPost && (
+        <div className="notice friendly published">
+          <span>✓ <b>Salvata e pubblicata nel feed.</b></span>
+          <Link className="btn small" to={`/post/${savedPost}`}>Vedi il post</Link>
+        </div>
+      )}
       {warning && <p className="notice" onClick={() => setWarning(null)}>{warning}</p>}
 
       <div className="tiles">
-        <div className="tile teal"><span className="tile-label">Operazioni chiuse</span><b>{stats.closed}</b><small>{stats.open} ancora aperte</small></div>
+        <div className="tile teal"><span className="tile-label">Operazioni chiuse</span><b>{stats.closed}</b><small>{stats.open} {stats.open === 1 ? 'ancora aperta' : 'ancora aperte'}</small></div>
         <div className="tile violet"><span className="tile-label">Vincenti</span><b>{stats.winRate == null ? '–' : `${stats.winRate}%`}</b><small>sulle chiuse</small></div>
         <div className={`tile ${stats.totalR >= 0 ? 'teal' : 'coral'}`}><span className="tile-label">Risultato totale</span><b>{signed(stats.totalR, ' R')}</b><small>media {signed(stats.avgR, ' R')} a operazione</small></div>
         <div className={`tile ${stats.avgRisk != null && stats.avgRisk > 2 ? 'coral' : 'gold'}`}><span className="tile-label">Rischio medio</span><b>{stats.avgRisk == null ? '–' : `${num(stats.avgRisk, 2)}%`}</b><small>{stats.overRisk ? `${stats.overRisk} sopra il 2%` : 'mai sopra il 2%'}</small></div>

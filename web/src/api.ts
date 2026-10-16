@@ -52,7 +52,7 @@ export type Trade = {
   entryPrice: number; stopLoss: number; takeProfit: number | null; exitPrice: number | null; riskPercent: number;
   rewardRisk: number | null; resultR: number | null; resultPercent: number | null;
   plan: string; lesson: string; emotion: string | null; followedPlan: boolean | null; movedStop: boolean | null;
-  status: 'open' | 'closed'; openedAt: string; closedAt: string | null;
+  status: 'open' | 'closed'; openedAt: string; closedAt: string | null; postId?: number | null;
 };
 export type Recording = {
   id: number; roomId: number; status: 'recording' | 'processing' | 'ready' | 'failed'; url: string | null; duration: number | null;

@@ -80,6 +80,8 @@ const trades: DemoTrade[] = [
   { id: 4, userId: ME, symbol: 'BTC', market: 'crypto', direction: 'long', entryPrice: 61000, stopLoss: 59500, takeProfit: null, exitPrice: 58200, riskPercent: 3, plan: 'Entrato dopo una notizia.', lesson: "Ho spostato lo stop \"per dargli respiro\" e ho perso quasi il doppio. Mai più sopra l'1%.", emotion: 'impulsivo', followedPlan: false, movedStop: true, openedAt: ago(15000), closedAt: ago(14000) },
   { id: 5, userId: 2, symbol: 'STLAM', market: 'azioni', direction: 'long', entryPrice: 12.4, stopLoss: 12.0, takeProfit: 13.4, exitPrice: 13.2, riskPercent: 1, plan: 'Doppio minimo su 12, stop sotto il secondo minimo.', lesson: "Sono uscita un po' prima dell'obiettivo per paura. Va bene lo stesso, ma la prossima volta lascio lavorare il piano.", emotion: 'ansioso', followedPlan: true, movedStop: false, openedAt: ago(3000), closedAt: ago(60) },
 ];
+// Le operazioni salvate vanno sempre nel feed: anche quelle di esempio hanno il loro post.
+for (const t of trades.filter((x) => x.userId === ME)) posts.push({ id: nextId++, authorId: ME, body: '', mediaUrl: null, mediaType: null, tradeId: t.id, createdAt: t.openedAt, likes: new Set([2]), comments: [] });
 const round = (v: number) => Math.round(v * 100) / 100;
 const serializeTrade = (t: DemoTrade) => {
   const risk = Math.abs(t.entryPrice - t.stopLoss);
@@ -190,10 +192,12 @@ export async function demoApi(path: string, method: string, body: any): Promise<
     if (d.direction === 'short' && d.stopLoss <= d.entryPrice) throw new DemoError(400, 'In una vendita (short) lo stop loss va sopra il prezzo di ingresso');
     const t: DemoTrade = { id: nextId++, userId: ME, symbol: String(d.symbol).toUpperCase(), market: d.market, direction: d.direction, entryPrice: d.entryPrice, stopLoss: d.stopLoss, takeProfit: num(d.takeProfit), exitPrice: num(d.exitPrice), riskPercent: d.riskPercent, plan: d.plan ?? '', lesson: d.lesson ?? '', emotion: d.emotion ?? null, followedPlan: d.followedPlan ?? null, movedStop: d.movedStop ?? null, openedAt: new Date().toISOString(), closedAt: d.exitPrice != null ? new Date().toISOString() : null };
     trades.unshift(t);
-    return { trade: serializeTrade(t), warning: d.riskPercent > 2 ? "Stai rischiando più del 2% del capitale: la regola della comunità consiglia di restare tra l'1% e il 2%." : null };
+    const post: DemoPost = { id: nextId++, authorId: ME, body: '', mediaUrl: null, mediaType: null, tradeId: t.id, createdAt: new Date().toISOString(), likes: new Set(), comments: [] };
+    posts.unshift(post);
+    return { trade: { ...serializeTrade(t), postId: post.id }, postId: post.id, warning: d.riskPercent > 2 ? "Stai rischiando più del 2% del capitale: la regola della comunità consiglia di restare tra l'1% e il 2%." : null };
   }
   if (route === '/journal') {
-    const mine = trades.filter((t) => t.userId === ME).map(serializeTrade)
+    const mine = trades.filter((t) => t.userId === ME).map((t) => ({ ...serializeTrade(t), postId: posts.find((p) => p.tradeId === t.id)?.id ?? null }))
       .sort((a, b) => Number(b.status === 'open') - Number(a.status === 'open') || (b.closedAt ?? b.openedAt).localeCompare(a.closedAt ?? a.openedAt));
     return { trades: mine, stats: journalStats() };
   }
@@ -205,12 +209,14 @@ export async function demoApi(path: string, method: string, body: any): Promise<
       return { trade: serializeTrade(t) };
     }
     if (match[2] === 'share') {
+      const existing = posts.find((p) => p.tradeId === t.id);
+      if (existing) { if (body.text) existing.body = String(body.text).trim(); return { postId: existing.id, inReview: false }; }
       const p: DemoPost = { id: nextId++, authorId: ME, body: String(body.text ?? '').trim(), mediaUrl: null, mediaType: null, tradeId: t.id, createdAt: new Date().toISOString(), likes: new Set(), comments: [] };
       posts.unshift(p);
       return { postId: p.id, inReview: false };
     }
     trades.splice(trades.indexOf(t), 1);
-    posts.forEach((p) => { if (p.tradeId === t.id) p.tradeId = undefined; });
+    for (let i = posts.length - 1; i >= 0; i--) if (posts[i].tradeId === t.id) posts.splice(i, 1);
     return { deleted: true };
   }
   if (route === '/challenges/current') return { challenge: describeChallenge(challenges.current) };

@@ -429,6 +429,9 @@ test('diario di trading: operazione, chiusura, statistiche, condivisione come po
   assert.equal(open.body.trade.symbol, 'ENI');
   assert.equal(open.body.trade.rewardRisk, 3);
   assert.equal(open.body.warning, null);
+  assert.ok(open.body.postId, "l'operazione salvata va subito nel feed");
+  const auto = await call('GET', `/api/posts/${open.body.postId}`, bruno);
+  assert.equal(auto.body.post.trade.status, 'open');
 
   const closed = await call('POST', `/api/journal/${open.body.trade.id}/close`, anna, { exitPrice: 15, lesson: 'Ho preso profitto prima del target', emotion: 'calmo', followedPlan: true, movedStop: false });
   assert.equal(closed.body.trade.resultR, 2);
@@ -448,11 +451,15 @@ test('diario di trading: operazione, chiusura, statistiche, condivisione come po
 
   assert.equal((await call('POST', `/api/journal/${open.body.trade.id}/share`, bruno, { text: 'non mia' })).status, 404);
   const shared = await call('POST', `/api/journal/${open.body.trade.id}/share`, anna, { text: 'Operazione da manuale' });
-  assert.equal(shared.status, 201);
+  assert.equal(shared.status, 200);
+  assert.equal(shared.body.postId, open.body.postId, 'nessun doppione: il testo va nel post già pubblicato');
   const post = await call('GET', `/api/posts/${shared.body.postId}`, bruno);
   assert.equal(post.body.post.trade.symbol, 'ENI');
   assert.equal(post.body.post.trade.resultR, 2);
   assert.equal(post.body.post.trade.lesson, 'Ho preso profitto prima del target');
+  assert.equal(post.body.post.body, 'Operazione da manuale');
+  assert.equal((await call('DELETE', `/api/journal/${short.body.trade.id}`, anna)).status, 200);
+  assert.equal((await call('GET', `/api/posts/${short.body.postId}`, bruno)).status, 404, 'cancellata l\'operazione sparisce anche il post');
 });
 
 test('sfida della settimana: partecipa, check-in, badge sul profilo', async () => {
