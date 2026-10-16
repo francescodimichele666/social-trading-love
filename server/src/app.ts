@@ -16,6 +16,8 @@ import roomRoutes from './routes/rooms.js';
 import moderationRoutes from './routes/moderation.js';
 import adminRoutes from './routes/admin.js';
 import accountRoutes from './routes/account.js';
+import journalRoutes from './routes/journal.js';
+import challengeRoutes from './routes/challenges.js';
 import notificationRoutes from './routes/notifications.js';
 
 export type AuthUser = { id: number; role: 'member' | 'moderator' | 'admin'; username: string; isOwner: boolean };
@@ -52,6 +54,9 @@ export async function buildApp(opts: { logger?: boolean; rateLimit?: boolean } =
   const uploadRoot = path.resolve(config.uploadDir);
   await mkdir(uploadRoot, { recursive: true });
   await app.register(fastifyStatic, { root: uploadRoot, prefix: '/uploads/', decorateReply: false });
+  const recordingsRoot = path.resolve(config.recordingsDir);
+  await mkdir(recordingsRoot, { recursive: true });
+  await app.register(fastifyStatic, { root: recordingsRoot, prefix: '/recordings/', decorateReply: false });
 
   // Verifica il token e ricarica l'utente: così un utente bloccato perde subito l'accesso.
   app.decorate('authenticate', async (req: FastifyRequest) => {
@@ -101,6 +106,8 @@ export async function buildApp(opts: { logger?: boolean; rateLimit?: boolean } =
   await app.register(moderationRoutes, { prefix: '/api' });
   await app.register(adminRoutes, { prefix: '/api' });
   await app.register(accountRoutes, { prefix: '/api' });
+  await app.register(journalRoutes, { prefix: '/api' });
+  await app.register(challengeRoutes, { prefix: '/api' });
   await app.register(notificationRoutes, { prefix: '/api' });
 
   return app;

@@ -3,6 +3,8 @@ import { config } from './config.js';
 
 // BIGINT come numero JavaScript: gli id restano ben sotto 2^53.
 pg.types.setTypeParser(20, (v) => Number(v));
+// Le date (senza ora) restano testo AAAA-MM-GG, senza spostamenti di fuso orario.
+pg.types.setTypeParser(1082, (v) => v);
 
 export const pool = new pg.Pool({ connectionString: config.databaseUrl });
 

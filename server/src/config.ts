@@ -26,5 +26,8 @@ export const config = {
   publicUrl: process.env.PUBLIC_URL ?? '',
   // Cartella dei backup, per mostrare nel pannello quando è stato fatto l'ultimo.
   backupDir: process.env.BACKUP_DIR ?? '',
+  // Registrazione delle Piazze (servizio LiveKit Egress) e cartella dove finiscono i video.
+  recordings: process.env.RECORDINGS === 'true',
+  recordingsDir: process.env.RECORDINGS_DIR ?? './recordings',
   corsOrigin: process.env.CORS_ORIGIN ?? true,
 };

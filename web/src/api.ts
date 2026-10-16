@@ -45,10 +45,27 @@ export type User = { id: number; username: string; displayName: string; bio: str
 export type Post = {
   id: number; body: string; mediaUrl: string | null; mediaType: 'image' | 'video' | null; mediaPoster?: string | null; mediaDuration?: number | null; inReview: boolean; createdAt: string;
   author: Pick<User, 'id' | 'username' | 'displayName' | 'avatarUrl' | 'isOwner'>; likes: number; comments: number; liked: boolean; fromFollowing?: boolean;
+  trade?: Trade | null;
+};
+export type Trade = {
+  id: number; symbol: string; market: string; direction: 'long' | 'short';
+  entryPrice: number; stopLoss: number; takeProfit: number | null; exitPrice: number | null; riskPercent: number;
+  rewardRisk: number | null; resultR: number | null; resultPercent: number | null;
+  plan: string; lesson: string; emotion: string | null; followedPlan: boolean | null; movedStop: boolean | null;
+  status: 'open' | 'closed'; openedAt: string; closedAt: string | null;
+};
+export type Recording = {
+  id: number; roomId: number; status: 'recording' | 'processing' | 'ready' | 'failed'; url: string | null; duration: number | null;
+  sizeBytes: number | null; startedAt: string; endedAt: string | null; title?: string; host?: Pick<User, 'username' | 'displayName' | 'avatarUrl'>;
+};
+export type Challenge = {
+  id: number; presetKey: string | null; title: string; description: string; rule: string; emoji: string; requiredDays: number;
+  startsOn: string; endsOn: string; today: string; participants: number; completed: number;
+  me: { joined: boolean; checkins: { day: string; kept: boolean }[]; keptDays: number; badge: boolean };
 };
 export type Room = {
   id: number; title: string; description: string; topic: string; status: 'scheduled' | 'live' | 'ended';
-  scheduledAt: string; startedAt: string | null; host: Pick<User, 'id' | 'username' | 'displayName' | 'avatarUrl'>; listeners: number;
+  scheduledAt: string; startedAt: string | null; host: Pick<User, 'id' | 'username' | 'displayName' | 'avatarUrl'>; listeners: number; record?: boolean;
 };
 
 export function timeAgo(iso: string): string {

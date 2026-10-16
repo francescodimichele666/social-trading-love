@@ -4,6 +4,7 @@ import { api, type Post } from '../api';
 import { useAuth } from '../auth';
 import PostCard from '../components/PostCard';
 import LiveStrip from '../components/LiveStrip';
+import ChallengeCard from '../components/ChallengeCard';
 import Avatar from '../components/Avatar';
 import Icon from '../components/Icon';
 import { POST_CREATED } from '../components/CreateSheet';
@@ -44,6 +45,7 @@ export default function Feed({ onCompose }: { onCompose: () => void }) {
         </div>
       </header>
       <LiveStrip />
+      <ChallengeCard />
       {me && (
         <button className="prompt-card" onClick={onCompose}>
           <Avatar user={me} size={40} />

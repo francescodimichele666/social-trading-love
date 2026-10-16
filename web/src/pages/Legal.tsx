@@ -41,7 +41,9 @@ export function Privacy() {
       <ul>
         <li><strong>Account:</strong> email, nome utente, nome che mostri, data di nascita (per verificare che tu sia maggiorenne), password (salvata solo in forma cifrata, nessuno può leggerla).</li>
         <li><strong>Quello che pubblichi:</strong> post, foto, video, commenti, profilo, Piazze che crei, chi segui.</li>
-        <li><strong>Piazze live:</strong> audio e video passano in diretta tra i partecipanti e <strong>non vengono registrati</strong> dal server.</li>
+        <li><strong>Piazze live:</strong> audio e video passano in diretta tra i partecipanti. Di norma <strong>non vengono registrati</strong>. Solo se chi apre la Piazza sceglie "Registra", il server salva un video di chi è sul palco: lo vedi scritto prima di entrare e con la scritta REC durante la diretta. Chi ascolta soltanto non compare nel video. Chi ha condotto la Piazza o un amministratore può cancellare la registrazione in qualsiasi momento, e puoi chiedere tu di toglierla se ci sei dentro.</li>
+        <li><strong>Diario di trading:</strong> le operazioni che segni (strumento, prezzi, rischio in percentuale, note). Le vedi solo tu; diventano visibili agli altri solo se condividi una singola operazione come post. Non chiediamo importi in euro né dati del tuo conto.</li>
+        <li><strong>Sfida della settimana:</strong> se partecipi, le tue risposte giornaliere e i badge che ottieni (i badge si vedono sul profilo).</li>
         <li><strong>Notifiche sul telefono:</strong> se le attivi, un codice del tuo dispositivo che serve solo a mandarti gli avvisi.</li>
         <li><strong>Sicurezza:</strong> segnalazioni, decisioni di moderazione e dati tecnici come l'indirizzo IP, usati per proteggere il servizio da abusi.</li>
       </ul>
@@ -97,7 +99,7 @@ export function Terms() {
       <p>Iscrivendoti accetti le <Link to="/regole">regole della comunità</Link>: niente segnali da copiare, niente promesse di guadagno, niente richieste di soldi, rispetto per tutti.</p>
 
       <h2>5. I tuoi contenuti</h2>
-      <p>Quello che pubblichi resta tuo. Ci dai il permesso, gratuito e non esclusivo, di mostrarlo agli altri membri finché non lo cancelli. Pubblica solo contenuti di cui hai i diritti e non riprendere o registrare altre persone nelle Piazze senza il loro consenso.</p>
+      <p>Quello che pubblichi resta tuo. Ci dai il permesso, gratuito e non esclusivo, di mostrarlo agli altri membri finché non lo cancelli. Pubblica solo contenuti di cui hai i diritti e non riprendere o registrare altre persone nelle Piazze senza il loro consenso. Se apri una Piazza con la registrazione attiva, ti impegni a usarla solo dentro la comunità: chi sale sul palco accetta di comparire nel video, che resta visibile ai membri finché tu o un amministratore non lo cancellate.</p>
 
       <h2>6. Moderazione e contestazioni</h2>
       <p>Chiunque può segnalare un contenuto. Moderatori e amministratori possono rimuovere contenuti o sospendere account che violano le regole o la legge. Ogni decisione ti arriva negli avvisi con la motivazione. Se non sei d'accordo puoi contestarla scrivendo al titolare: la decisione verrà riesaminata da una persona.</p>

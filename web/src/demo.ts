@@ -29,9 +29,10 @@ const following = new Set([2, 3]);
 
 let nextId = 100;
 type DemoComment = { id: number; authorId: number; body: string; createdAt: string };
-type DemoPost = { id: number; authorId: number; body: string; mediaUrl: string | null; mediaType: 'image' | 'video' | null; mediaPoster?: string; mediaDuration?: number; createdAt: string; likes: Set<number>; comments: DemoComment[]; flagged?: boolean };
-type DemoRoom = { id: number; hostId: number; title: string; description: string; topic: string; status: 'scheduled' | 'live' | 'ended'; scheduledAt: string; startedAt: string | null; stage: number[]; hands: number[]; listeners: number };
+type DemoPost = { id: number; authorId: number; body: string; mediaUrl: string | null; mediaType: 'image' | 'video' | null; mediaPoster?: string; mediaDuration?: number; createdAt: string; likes: Set<number>; comments: DemoComment[]; flagged?: boolean; tradeId?: number };
+type DemoRoom = { id: number; hostId: number; title: string; description: string; topic: string; status: 'scheduled' | 'live' | 'ended'; scheduledAt: string; startedAt: string | null; stage: number[]; hands: number[]; listeners: number; record?: boolean };
 const posts: DemoPost[] = [
+  { id: 6, authorId: 2, body: 'Dal mio diario: chiusa in guadagno, ma sono uscita prima dell\'obiettivo per paura. Voi lasciate lavorare il piano fino in fondo?', mediaUrl: null, mediaType: null, tradeId: 5, createdAt: ago(55), likes: new Set<number>([1, 3, 4]), comments: [{ id: 3, authorId: 3, body: 'Succede anche a me! Però +2 R resta un ottimo risultato.', createdAt: ago(40) }] },
   { id: 5, authorId: 2, body: 'Primo video! Come decido lo stop loss prima di entrare, e perché non lo sposto mai. Ditemi come fate voi 👇', mediaUrl: demoVideo, mediaType: 'video' as const, mediaPoster: demoPoster, mediaDuration: 9, createdAt: ago(12), likes: new Set<number>([3, 4]), comments: [{ id: 2, authorId: 4, body: 'Chiarissimo, grazie Giulia!', createdAt: ago(6) }] },
   { id: 1, authorId: 2, body: 'Operazione chiusa in perdita (-0,8%). Ho rispettato lo stop loss senza spostarlo: per me oggi è una vittoria. Il grafico con il punto di uscita 👇', mediaUrl: chart('#2dd4bf', '0,60 60,80 120,70 180,110 240,130 300,155 340,160'), mediaType: 'image' as const, createdAt: ago(35), likes: new Set<number>([1, 3]), comments: [{ id: 1, authorId: 3, body: 'Rispetto! Io lo spostavo sempre e perdevo il doppio.', createdAt: ago(20) }] },
   { id: 2, authorId: 3, body: 'Domanda per chi ha più esperienza: come gestite la voglia di "rifarvi" dopo una perdita? Stasera ne parliamo nella Piazza di Giulia?', mediaUrl: null, mediaType: null, createdAt: ago(80), likes: new Set([2]), comments: [] },
@@ -40,9 +41,11 @@ const posts: DemoPost[] = [
 ];
 
 const rooms: DemoRoom[] = [
-  { id: 1, hostId: 2, title: 'Gestire le perdite senza farsi male', description: 'Chiacchierata aperta: raccontiamo come reagiamo dopo una perdita. Alzate la mano per intervenire.', topic: 'psicologia', status: 'live' as const, scheduledAt: ago(25), startedAt: ago(25), stage: [2, 3], hands: [4], listeners: 14 },
+  { id: 1, hostId: 2, title: 'Gestire le perdite senza farsi male', description: 'Chiacchierata aperta: raccontiamo come reagiamo dopo una perdita. Alzate la mano per intervenire.', topic: 'psicologia', status: 'live' as const, scheduledAt: ago(25), startedAt: ago(25), stage: [2, 3], hands: [4], listeners: 14, record: true },
   { id: 2, hostId: 1, title: 'Come si calcola la size di una posizione', description: 'Esempi pratici con numeri veri: capitale, rischio per operazione, stop loss.', topic: 'rischio', status: 'scheduled' as const, scheduledAt: new Date(now + 26 * 3600000).toISOString(), startedAt: null, stage: [1], hands: [], listeners: 0 },
 ];
+
+rooms.push({ id: 3, hostId: 2, title: 'Il mio primo anno di trading: errori e lezioni', description: 'Giulia racconta cosa ha sbagliato e cosa rifarebbe.', topic: 'psicologia', status: 'ended', scheduledAt: ago(60 * 26), startedAt: ago(60 * 26), stage: [2], hands: [], listeners: 0, record: true });
 
 const notifications = [
   { id: 1, kind: 'room_live', message: '@giulia è in diretta: Gestire le perdite senza farsi male', link: '/piazze/1', read: false, createdAt: ago(25) },
@@ -68,6 +71,80 @@ const suspended = [
 // Iscrizioni finte degli ultimi 14 giorni, per il pannello amministratore.
 const signupCounts = [2, 1, 3, 0, 4, 2, 5, 3, 6, 4, 7, 5, 9, 6];
 
+// Diario: alcune operazioni di esempio. Il risultato in R si calcola come sul server vero.
+type DemoTrade = { id: number; userId: number; symbol: string; market: string; direction: 'long' | 'short'; entryPrice: number; stopLoss: number; takeProfit: number | null; exitPrice: number | null; riskPercent: number; plan: string; lesson: string; emotion: string | null; followedPlan: boolean | null; movedStop: boolean | null; openedAt: string; closedAt: string | null };
+const trades: DemoTrade[] = [
+  { id: 1, userId: ME, symbol: 'ENI', market: 'azioni', direction: 'long', entryPrice: 14.2, stopLoss: 13.9, takeProfit: 14.95, exitPrice: null, riskPercent: 1, plan: 'Rimbalzo sul supporto di 14, esco se chiude sotto 13,90.', lesson: '', emotion: null, followedPlan: null, movedStop: null, openedAt: ago(200), closedAt: null },
+  { id: 2, userId: ME, symbol: 'EURUSD', market: 'forex', direction: 'short', entryPrice: 1.0890, stopLoss: 1.0920, takeProfit: 1.0820, exitPrice: 1.0832, riskPercent: 1, plan: 'Rifiuto della resistenza, obiettivo il minimo della settimana.', lesson: "Ho aspettato la conferma invece di entrare d'impulso: entrata migliore.", emotion: 'calmo', followedPlan: true, movedStop: false, openedAt: ago(4000), closedAt: ago(2600) },
+  { id: 3, userId: ME, symbol: 'NVDA', market: 'azioni', direction: 'long', entryPrice: 118, stopLoss: 114, takeProfit: 128, exitPrice: 114, riskPercent: 1.5, plan: 'Rottura del massimo con volumi.', lesson: 'Stop preso. Giusto così: il piano diceva di uscire lì.', emotion: 'concentrato', followedPlan: true, movedStop: false, openedAt: ago(9000), closedAt: ago(7000) },
+  { id: 4, userId: ME, symbol: 'BTC', market: 'crypto', direction: 'long', entryPrice: 61000, stopLoss: 59500, takeProfit: null, exitPrice: 58200, riskPercent: 3, plan: 'Entrato dopo una notizia.', lesson: "Ho spostato lo stop \"per dargli respiro\" e ho perso quasi il doppio. Mai più sopra l'1%.", emotion: 'impulsivo', followedPlan: false, movedStop: true, openedAt: ago(15000), closedAt: ago(14000) },
+  { id: 5, userId: 2, symbol: 'STLAM', market: 'azioni', direction: 'long', entryPrice: 12.4, stopLoss: 12.0, takeProfit: 13.4, exitPrice: 13.2, riskPercent: 1, plan: 'Doppio minimo su 12, stop sotto il secondo minimo.', lesson: "Sono uscita un po' prima dell'obiettivo per paura. Va bene lo stesso, ma la prossima volta lascio lavorare il piano.", emotion: 'ansioso', followedPlan: true, movedStop: false, openedAt: ago(3000), closedAt: ago(60) },
+];
+const round = (v: number) => Math.round(v * 100) / 100;
+const serializeTrade = (t: DemoTrade) => {
+  const risk = Math.abs(t.entryPrice - t.stopLoss);
+  const r = t.exitPrice == null || !risk ? null : round((t.direction === 'long' ? t.exitPrice - t.entryPrice : t.entryPrice - t.exitPrice) / risk);
+  return {
+    ...t, rewardRisk: t.takeProfit != null ? round(Math.abs(t.takeProfit - t.entryPrice) / risk) : null,
+    resultR: r, resultPercent: r == null ? null : round(r * t.riskPercent), status: t.exitPrice == null ? 'open' : 'closed',
+  };
+};
+const journalStats = () => {
+  const mine = trades.filter((t) => t.userId === ME).map(serializeTrade);
+  const closed = mine.filter((t) => t.status === 'closed').sort((a, b) => b.closedAt!.localeCompare(a.closedAt!));
+  const rs = closed.map((t) => t.resultR!).filter((r) => r != null);
+  const pct = (k: 'followedPlan' | 'movedStop') => { const known = closed.filter((t) => t[k] != null); return known.length ? Math.round(known.filter((t) => t[k]).length / known.length * 100) : null; };
+  let stopStreak = 0;
+  for (const t of closed) { if (t.movedStop) break; stopStreak++; }
+  return {
+    closed: closed.length, open: mine.length - closed.length,
+    winRate: rs.length ? Math.round(rs.filter((r) => r > 0).length / rs.length * 100) : null,
+    avgR: rs.length ? round(rs.reduce((a, b) => a + b, 0) / rs.length) : null, totalR: round(rs.reduce((a, b) => a + b, 0)),
+    avgRisk: closed.length ? round(closed.reduce((a, t) => a + t.riskPercent, 0) / closed.length) : null,
+    overRisk: closed.filter((t) => t.riskPercent > 2).length, followedPlanPct: pct('followedPlan'), movedStopPct: pct('movedStop'), stopStreak,
+  };
+};
+
+// Sfida della settimana: lunedì di questa settimana, in ora locale.
+const dayStr = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const monday = new Date(now); monday.setHours(12, 0, 0, 0); monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+const plusDays = (d: Date, n: number) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+const TODAY = dayStr(new Date(now));
+const PRESETS = [
+  { key: 'stop', emoji: '🛑', title: 'Lo stop non si tocca', description: 'Per tutta la settimana lo stop loss si decide prima di entrare e non si sposta mai, nemmeno quando fa male.', rule: 'Oggi non ho spostato nessuno stop loss (o non ho fatto operazioni).' },
+  { key: 'rischio1', emoji: '🎯', title: 'Massimo 1%', description: "Ogni operazione rischia al massimo l'1% del capitale. Calcola la size prima di entrare.", rule: "Oggi nessuna operazione ha rischiato più dell'1% del capitale." },
+  { key: 'diario', emoji: '📓', title: 'Diario ogni giorno', description: "Scrivi nel diario ogni giorno: un'operazione, un'osservazione o un errore. Anche due righe bastano.", rule: 'Oggi ho scritto nel mio diario di trading.' },
+  { key: 'vendetta', emoji: '🧘', title: 'Niente vendetta', description: 'Dopo una perdita si chiude per la giornata. Niente operazioni per "rifarsi".', rule: 'Oggi, dopo una perdita, non ho fatto operazioni per rifarmi.' },
+  { key: 'piano', emoji: '🗺️', title: 'Prima il piano', description: "Prima di ogni operazione scrivi ingresso, stop loss e obiettivo. Se non c'è il piano, non si entra.", rule: 'Oggi ogni operazione aveva il piano scritto prima di entrare.' },
+  { key: 'studio', emoji: '📚', title: '15 minuti di studio', description: "Ogni giorno 15 minuti per imparare: un capitolo di un libro, una lezione, l'analisi di un tuo errore.", rule: 'Oggi ho studiato almeno 15 minuti.' },
+];
+type DemoChallenge = { id: number; presetKey: string | null; title: string; description: string; rule: string; emoji: string; requiredDays: number; startsOn: string; endsOn: string; participants: number; completed: number; joined: boolean; checkins: { day: string; kept: boolean }[] };
+const makeChallenge = (id: number, start: Date, p: (typeof PRESETS)[number], participants: number): DemoChallenge => ({
+  id, presetKey: p.key, title: p.title, description: p.description, rule: p.rule, emoji: p.emoji, requiredDays: 5,
+  startsOn: dayStr(start), endsOn: dayStr(plusDays(start, 6)), participants, completed: 0, joined: false, checkins: [],
+});
+const challenges = { current: makeChallenge(1, monday, PRESETS[0], 23), next: makeChallenge(2, plusDays(monday, 7), PRESETS[2], 0) };
+// Nei giorni passati di questa settimana Francesco ha già risposto (oggi può prendere il badge).
+challenges.current.joined = true;
+challenges.current.checkins = [0, 1, 2, 3, 4, 5].map((i) => dayStr(plusDays(monday, i))).filter((d) => d < TODAY).map((day) => ({ day, kept: true }));
+challenges.current.completed = 4;
+const badges = [{ id: 1, userId: ME, title: 'Massimo 1%', emoji: '🎯', awardedAt: ago(60 * 24 * 9) }, { id: 2, userId: 2, title: 'Massimo 1%', emoji: '🎯', awardedAt: ago(60 * 24 * 9) }, { id: 3, userId: 2, title: 'Diario ogni giorno', emoji: '📓', awardedAt: ago(60 * 24 * 23) }];
+const describeChallenge = (c: DemoChallenge) => ({
+  id: c.id, presetKey: c.presetKey, title: c.title, description: c.description, rule: c.rule, emoji: c.emoji, requiredDays: c.requiredDays,
+  startsOn: c.startsOn, endsOn: c.endsOn, today: TODAY, participants: c.participants, completed: c.completed,
+  me: { joined: c.joined, checkins: c.checkins, keptDays: c.checkins.filter((x) => x.kept).length, badge: badges.some((b) => b.userId === ME && b.title === c.title && c.checkins.filter((x) => x.kept).length >= c.requiredDays) },
+});
+
+// Registrazioni: nell'anteprima usiamo il video di esempio.
+const recordings = [
+  { id: 1, roomId: 3, status: 'ready', url: demoVideo, duration: 2735, sizeBytes: 412000000, startedAt: ago(60 * 26), endedAt: ago(60 * 25), title: 'Il mio primo anno di trading: errori e lezioni', hostId: 2 },
+  { id: 2, roomId: 4, status: 'ready', url: demoVideo, duration: 1820, sizeBytes: 260000000, startedAt: ago(60 * 24 * 4), endedAt: ago(60 * 24 * 4 - 30), title: 'ETF per chi inizia: domande e risposte', hostId: 4 },
+];
+const serializeRecording = (r: (typeof recordings)[number]) => {
+  const h = user(r.hostId);
+  return { ...r, host: { username: h.username, displayName: h.displayName, avatarUrl: h.avatarUrl } };
+};
+
 const RULES = [
   'Qui si impara e ci si confronta: nessun consiglio di investimento personalizzato e nessun "segnale" da copiare.',
   'Niente promesse di guadagni sicuri, rendimenti garantiti o schemi per arricchirsi in fretta.',
@@ -85,10 +162,11 @@ const serializePost = (p: DemoPost) => ({
   id: p.id, body: p.body, mediaUrl: p.mediaUrl, mediaType: p.mediaType, mediaPoster: p.mediaPoster ?? null, mediaDuration: p.mediaDuration ?? null, inReview: Boolean(p.flagged), createdAt: p.createdAt,
   author: brief(user(p.authorId)), likes: p.likes.size, comments: p.comments.length, liked: p.likes.has(ME),
   fromFollowing: p.authorId === ME || following.has(p.authorId),
+  trade: p.tradeId ? serializeTrade(trades.find((t) => t.id === p.tradeId)!) : null,
 });
 const serializeRoom = (r: DemoRoom) => ({
   id: r.id, title: r.title, description: r.description, topic: r.topic, status: r.status, scheduledAt: r.scheduledAt,
-  startedAt: r.startedAt, host: brief(user(r.hostId)), listeners: r.listeners,
+  startedAt: r.startedAt, host: brief(user(r.hostId)), listeners: r.listeners, record: Boolean(r.record),
 });
 
 class DemoError extends Error {
@@ -104,6 +182,56 @@ export async function demoApi(path: string, method: string, body: any): Promise<
   const m = (re: RegExp) => route.match(re);
   let match: RegExpMatchArray | null;
 
+  if (route === '/journal' && method === 'POST') {
+    const num = (v: any) => (v == null || v === '' ? null : Number(v));
+    const d = body;
+    if (!d.symbol || num(d.entryPrice) == null || num(d.stopLoss) == null || !num(d.riskPercent)) throw new DemoError(400, 'Compila strumento, ingresso, stop loss e rischio');
+    if (d.direction === 'long' && d.stopLoss >= d.entryPrice) throw new DemoError(400, 'In un acquisto (long) lo stop loss va sotto il prezzo di ingresso');
+    if (d.direction === 'short' && d.stopLoss <= d.entryPrice) throw new DemoError(400, 'In una vendita (short) lo stop loss va sopra il prezzo di ingresso');
+    const t: DemoTrade = { id: nextId++, userId: ME, symbol: String(d.symbol).toUpperCase(), market: d.market, direction: d.direction, entryPrice: d.entryPrice, stopLoss: d.stopLoss, takeProfit: num(d.takeProfit), exitPrice: num(d.exitPrice), riskPercent: d.riskPercent, plan: d.plan ?? '', lesson: d.lesson ?? '', emotion: d.emotion ?? null, followedPlan: d.followedPlan ?? null, movedStop: d.movedStop ?? null, openedAt: new Date().toISOString(), closedAt: d.exitPrice != null ? new Date().toISOString() : null };
+    trades.unshift(t);
+    return { trade: serializeTrade(t), warning: d.riskPercent > 2 ? "Stai rischiando più del 2% del capitale: la regola della comunità consiglia di restare tra l'1% e il 2%." : null };
+  }
+  if (route === '/journal') {
+    const mine = trades.filter((t) => t.userId === ME).map(serializeTrade)
+      .sort((a, b) => Number(b.status === 'open') - Number(a.status === 'open') || (b.closedAt ?? b.openedAt).localeCompare(a.closedAt ?? a.openedAt));
+    return { trades: mine, stats: journalStats() };
+  }
+  if ((match = m(/^\/journal\/(\d+)(?:\/(close|share))?$/))) {
+    const t = trades.find((x) => x.id === Number(match![1]) && x.userId === ME);
+    if (!t) throw new DemoError(404, 'Operazione non trovata');
+    if (match[2] === 'close') {
+      Object.assign(t, { exitPrice: Number(body.exitPrice), lesson: body.lesson ?? '', emotion: body.emotion, followedPlan: body.followedPlan, movedStop: body.movedStop, closedAt: t.closedAt ?? new Date().toISOString() });
+      return { trade: serializeTrade(t) };
+    }
+    if (match[2] === 'share') {
+      const p: DemoPost = { id: nextId++, authorId: ME, body: String(body.text ?? '').trim(), mediaUrl: null, mediaType: null, tradeId: t.id, createdAt: new Date().toISOString(), likes: new Set(), comments: [] };
+      posts.unshift(p);
+      return { postId: p.id, inReview: false };
+    }
+    trades.splice(trades.indexOf(t), 1);
+    posts.forEach((p) => { if (p.tradeId === t.id) p.tradeId = undefined; });
+    return { deleted: true };
+  }
+  if (route === '/challenges/current') return { challenge: describeChallenge(challenges.current) };
+  if (route === '/challenges/current/join') { const c = challenges.current; if (!c.joined) { c.joined = true; c.participants++; } return { challenge: describeChallenge(c) }; }
+  if (route === '/challenges/current/checkin') {
+    const c = challenges.current;
+    const before = describeChallenge(c).me.keptDays;
+    c.checkins = [...c.checkins.filter((x) => x.day !== TODAY), { day: TODAY, kept: Boolean(body.kept) }].sort((a, b) => a.day.localeCompare(b.day));
+    const kept = c.checkins.filter((x) => x.kept).length;
+    const earned = before < c.requiredDays && kept >= c.requiredDays && !badges.some((b) => b.userId === ME && b.title === c.title);
+    if (earned) { badges.unshift({ id: nextId++, userId: ME, title: c.title, emoji: c.emoji, awardedAt: new Date().toISOString() }); c.completed++; }
+    return { challenge: describeChallenge(c), earned };
+  }
+  if (route === '/challenges/plan') return { presets: PRESETS, current: describeChallenge(challenges.current), next: describeChallenge(challenges.next) };
+  if ((match = m(/^\/challenges\/(current|next)$/))) {
+    const c = challenges[match[1] as 'current' | 'next'];
+    if (c.participants > 0) throw new DemoError(400, `La sfida è già iniziata con ${c.participants} partecipanti: puoi cambiare quella della prossima settimana`);
+    const p = body.presetKey ? PRESETS.find((x) => x.key === body.presetKey)! : { key: null, ...body };
+    Object.assign(c, { presetKey: p.key, title: p.title, description: p.description, rule: p.rule, emoji: p.emoji, requiredDays: body.requiredDays ?? 5 });
+    return { challenge: describeChallenge(c) };
+  }
   if (route === '/rules') return { version: 'anteprima', rules: RULES, firstUser: false };
   if (route === '/login' || route === '/register') return { token: 'demo', user: user(ME) };
   if (route === '/me' && method === 'PATCH') return { user: Object.assign(user(ME), body) };
@@ -166,7 +294,8 @@ export async function demoApi(path: string, method: string, body: any): Promise<
     const u = users.find((x) => x.username === match![1]);
     if (!u) throw new DemoError(404, 'Utente non trovato');
     const followers = u.id === ME ? 3 : following.has(u.id) ? 2 : 1;
-    return { user: u, followers, following: u.id === ME ? following.size : 2, posts: posts.filter((p) => p.authorId === u.id).length, isFollowing: following.has(u.id), isMe: u.id === ME };
+    return { user: u, followers, following: u.id === ME ? following.size : 2, posts: posts.filter((p) => p.authorId === u.id).length, isFollowing: following.has(u.id), isMe: u.id === ME,
+      badges: badges.filter((b) => b.userId === u.id).map(({ id, title, emoji, awardedAt }) => ({ id, title, emoji, awardedAt })) };
   }
   if (route === '/me/avatar') {
     const file = (body as FormData).get('file');
@@ -230,11 +359,13 @@ export async function demoApi(path: string, method: string, body: any): Promise<
     return { removed: true };
   }
   if (route === '/rooms' && method === 'POST') {
-    const r = { id: nextId++, hostId: ME, title: body.title, description: body.description ?? '', topic: body.topic ?? '', status: (body.startNow ? 'live' : 'scheduled') as any, scheduledAt: body.scheduledAt ?? new Date().toISOString(), startedAt: body.startNow ? new Date().toISOString() : null, stage: [ME], hands: [3], listeners: 1 };
+    const r = { record: Boolean(body.record), id: nextId++, hostId: ME, title: body.title, description: body.description ?? '', topic: body.topic ?? '', status: (body.startNow ? 'live' : 'scheduled') as any, scheduledAt: body.scheduledAt ?? new Date().toISOString(), startedAt: body.startNow ? new Date().toISOString() : null, stage: [ME], hands: [3], listeners: 1 };
     rooms.unshift(r);
     return { room: serializeRoom(r) };
   }
-  if (route === '/rooms') return { rooms: rooms.filter((r) => r.status !== 'ended').map(serializeRoom) };
+  if (route === '/rooms') return { rooms: rooms.filter((r) => r.status !== 'ended').map(serializeRoom), recordingsEnabled: true };
+  if (route === '/recordings') return { recordings: recordings.map(serializeRecording) };
+  if ((match = m(/^\/recordings\/(\d+)$/))) { recordings.splice(recordings.findIndex((r) => r.id === Number(match![1])), 1); return { deleted: true }; }
   if ((match = m(/^\/rooms\/(\d+)(?:\/(.+))?$/))) {
     const r = rooms.find((x) => x.id === Number(match![1]));
     if (!r) throw new DemoError(404, 'Piazza non trovata');
@@ -264,6 +395,7 @@ export async function demoApi(path: string, method: string, body: any): Promise<
       raisedHands: isHost ? r.hands.map((id) => person(id, 'audience')) : [],
       me: { role: myRole, handRaised: r.hands.includes(ME), isHost },
       maxOnStage: 6,
+      recordings: r.status === 'ended' ? recordings.filter((x) => x.roomId === r.id).map(serializeRecording) : [],
     };
   }
   throw new DemoError(404, 'Non disponibile nell\'anteprima');

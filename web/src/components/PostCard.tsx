@@ -7,6 +7,7 @@ import Icon from './Icon';
 import ReportButton from './ReportButton';
 import VideoPlayer from './VideoPlayer';
 import RemoveButton from './RemoveButton';
+import TradeCard from './TradeCard';
 
 export default function PostCard({ post, onDeleted }: { post: Post; onDeleted?: (id: number) => void }) {
   const { me } = useAuth();
@@ -51,6 +52,7 @@ export default function PostCard({ post, onDeleted }: { post: Post; onDeleted?: 
         {post.inReview && <span className="pill warn">In revisione</span>}
       </header>
       {post.body && <p className="post-body">{post.body}</p>}
+      {post.trade && <TradeCard trade={post.trade} />}
       {post.mediaUrl && post.mediaType === 'image' && <img className="media" src={post.mediaUrl} alt="" loading="lazy" onDoubleClick={() => !liked && toggleLike()} />}
       {post.mediaUrl && post.mediaType === 'video' && <VideoPlayer src={post.mediaUrl} poster={post.mediaPoster} duration={post.mediaDuration} />}
       <footer className="post-actions">

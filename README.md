@@ -1,6 +1,6 @@
 # Love Trading Club
 
-La comunità gratuita del trading responsabile: post, video, Piazze live con fino a 6 persone sul palco, iscrizione libera e gratuita.
+La comunità gratuita del trading responsabile: post, video, Piazze live con fino a 6 persone sul palco, diario di trading, sfida della settimana, iscrizione libera e gratuita.
 
 ## Cosa c'è dentro
 
@@ -21,6 +21,9 @@ La comunità gratuita del trading responsabile: post, video, Piazze live con fin
 - Trading responsabile: le frasi tipiche delle truffe ("guadagno sicuro", "gruppo VIP"...) mandano il contenuto in revisione.
 - Segnalazioni e pannello di moderazione: ogni decisione arriva alla persona con la motivazione (Digital Services Act).
 - Pronti per il pubblico: informativa privacy e condizioni d'uso con consenso all'iscrizione, "ho dimenticato la password" via email dalla casella del proprietario, notifiche sul telefono (Web Push, chiavi create da sole), scarica i tuoi dati ed elimina l'account, backup automatico ogni notte.
+- Diario di trading: ogni operazione con ingresso, stop loss, obiettivo e rischio in percentuale; alla chiusura calcola il risultato in "R" e tiene le statistiche (vincenti, rischio medio, quante volte hai spostato lo stop). Lo vede solo il proprietario del diario, che può condividere una singola operazione come post con una scheda grafica.
+- Sfida della settimana: da lunedì a domenica, un'abitudine da trader responsabile (es. "Lo stop non si tocca"). Ogni giorno si risponde sì o no; con 5 giorni su 7 arriva il badge sul profilo. Se nessuno la sceglie parte da sola a rotazione; gli amministratori possono sceglierla o scriverla.
+- Registrazione delle Piazze (facoltativa, la sceglie chi apre la Piazza): un servizio a parte (LiveKit Egress) salva un MP4 a 720p di chi è sul palco. Avviso chiaro prima di entrare e scritta REC durante la diretta; le registrazioni si guardano nella pagina Piazze e chi conduceva o un amministratore le può cancellare. Si spegne con `RECORDINGS=false`.
 - Pannello amministratore (solo per gli amministratori): numeri della comunità e iscrizioni degli ultimi 14 giorni, rimozione immediata di post e commenti con motivazione, elenco degli account sospesi e riattivazione. Moderatori e amministratori sospesi li riattiva solo il proprietario.
 
 ## Mettere online sul tuo server (passo passo)

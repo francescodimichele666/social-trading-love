@@ -3,14 +3,15 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Chat, ControlBar, GridLayout, LiveKitRoom, ParticipantTile, RoomAudioRenderer, useTracks } from '@livekit/components-react';
 import { Track } from 'livekit-client';
 import '@livekit/components-styles';
-import { api, type Room } from '../api';
+import { api, type Recording, type Room } from '../api';
+import RecordingItem from '../components/RecordingItem';
 import Avatar from '../components/Avatar';
 import Icon from '../components/Icon';
 import ReportButton from '../components/ReportButton';
 import { useAuth } from '../auth';
 
 type Person = { id: number; username: string; displayName: string; avatarUrl: string | null; role: string };
-type Info = { room: Room; stage: Person[]; raisedHands: Person[]; me: { role: string | null; handRaised: boolean; isHost: boolean }; maxOnStage: number };
+type Info = { room: Room; stage: Person[]; raisedHands: Person[]; me: { role: string | null; handRaised: boolean; isHost: boolean }; maxOnStage: number; recordings?: Recording[] };
 type Conn = { token: string; livekitUrl: string; role: string };
 
 // Mostra solo chi è sul palco (chi può trasmettere), non tutto il pubblico.
@@ -43,7 +44,8 @@ function DemoStage({ stage }: { stage: Person[] }) {
 export default function RoomPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const myId = useAuth().me?.id;
+  const { me: authMe } = useAuth();
+  const myId = authMe?.id;
   const [info, setInfo] = useState<Info | null>(null);
   const [conn, setConn] = useState<Conn | null>(null);
   const [showChat, setShowChat] = useState(false);
@@ -112,10 +114,14 @@ export default function RoomPage() {
           <strong>{room.title}</strong>
           <small>{room.status === 'live' ? `● In diretta · ${room.listeners} presenti` : room.status === 'ended' ? 'Finita' : 'Non ancora iniziata'}</small>
         </div>
+        {room.record && room.status === 'live' && <span className="pill rec" title="Questa Piazza viene registrata">● REC</span>}
         {!me.isHost && <ReportButton targetType="room" targetId={room.id} />}
       </header>
 
       {error && <p className="error" onClick={() => setError('')}>{error}</p>}
+      {room.record && room.status !== 'ended' && (
+        <p className="notice rec-notice">Questa Piazza {room.status === 'live' ? 'viene registrata' : 'sarà registrata'}: se sali sul palco, la tua voce e la tua immagine finiscono nel video. Chi ascolta soltanto non compare.</p>
+      )}
 
       {room.status === 'scheduled' && (
         <div className="the-end">
@@ -124,7 +130,20 @@ export default function RoomPage() {
           {me.isHost && <button className="btn big" onClick={() => act(`/rooms/${id}/start`)}>Vai in diretta</button>}
         </div>
       )}
-      {room.status === 'ended' && <div className="the-end"><strong>Questa Piazza è finita</strong></div>}
+      {room.status === 'ended' && (
+        <div className="the-end">
+          <strong>Questa Piazza è finita</strong>
+          {(info.recordings?.length ?? 0) > 0 && <p>Puoi rivederla qui sotto.</p>}
+        </div>
+      )}
+      {room.status === 'ended' && (info.recordings?.length ?? 0) > 0 && (
+        <section className="room-recordings">
+          {info.recordings!.map((r) => (
+            <RecordingItem key={r.id} rec={r} showTitle={false} canDelete={me.isHost || authMe?.role === 'admin'}
+              onDeleted={(rid) => setInfo({ ...info, recordings: info.recordings!.filter((x) => x.id !== rid) })} />
+          ))}
+        </section>
+      )}
 
       {room.status === 'live' && conn?.token === 'demo' && <DemoStage stage={info.stage} />}
       {room.status === 'live' && conn && conn.token !== 'demo' && (

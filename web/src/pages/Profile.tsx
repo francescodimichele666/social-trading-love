@@ -7,7 +7,7 @@ import PostCard from '../components/PostCard';
 import ReportButton from '../components/ReportButton';
 import Icon from '../components/Icon';
 
-type ProfileData = { user: User; followers: number; following: number; posts: number; isFollowing: boolean; isMe: boolean };
+type ProfileData = { user: User; followers: number; following: number; posts: number; isFollowing: boolean; isMe: boolean; badges?: { id: number; title: string; emoji: string; awardedAt: string }[] };
 
 export default function Profile() {
   const { username } = useParams();
@@ -81,12 +81,22 @@ export default function Profile() {
         <p className="muted">@{u.username}{u.role !== 'member' && <span className="pill">{u.isOwner ? 'Proprietario' : u.role === 'admin' ? 'Amministratore' : 'Moderatore'}</span>}</p>
         {u.bio && <p>{u.bio}</p>}
         {u.interests.length > 0 && <div className="tags">{u.interests.map((t) => <span key={t} className="tag">#{t}</span>)}</div>}
+        {data.badges && data.badges.length > 0 && (
+          <div className="badges" aria-label="Badge delle sfide">
+            {data.badges.map((b) => (
+              <span key={b.id} className="badge-chip" title={`Sfida completata il ${new Date(b.awardedAt).toLocaleDateString('it-IT')}`}>
+                <i>{b.emoji}</i>{b.title}
+              </span>
+            ))}
+          </div>
+        )}
         <div className="stats">
           <span><b>{data.posts}</b>post</span><span><b>{data.followers}</b>follower</span><span><b>{data.following}</b>seguiti</span>
         </div>
         {data.isMe ? (
           <div className="row center-row">
             <button className="btn ghost" onClick={() => setEditing(!editing)}><Icon name="edit" size={18} /> Modifica</button>
+            <Link className="btn ghost" to="/diario"><Icon name="trend" size={18} /> Il mio diario</Link>
             <Link className="btn" to="/inviti"><Icon name="gift" size={18} /> Porta un amico</Link>
           </div>
         ) : (

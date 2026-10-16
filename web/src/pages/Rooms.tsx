@@ -1,6 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { api, type Room } from '../api';
+import { api, type Recording, type Room } from '../api';
+import { useAuth } from '../auth';
+import RecordingItem from '../components/RecordingItem';
 import Avatar from '../components/Avatar';
 import Icon from '../components/Icon';
 
@@ -14,12 +16,19 @@ function when(room: Room) {
 export default function Rooms() {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
+  const { me } = useAuth();
   const [rooms, setRooms] = useState<Room[]>([]);
+  const [recordingsEnabled, setRecordingsEnabled] = useState(false);
+  const [recordings, setRecordings] = useState<Recording[]>([]);
   const creating = params.get('nuova') === '1';
-  const [form, setForm] = useState({ title: '', description: '', topic: '', scheduledAt: '', startNow: true });
+  const [form, setForm] = useState({ title: '', description: '', topic: '', scheduledAt: '', startNow: true, record: false });
   const [error, setError] = useState('');
 
-  const load = () => api('/rooms').then((d) => setRooms(d.rooms));
+  const load = () => api('/rooms').then((d) => {
+    setRooms(d.rooms);
+    setRecordingsEnabled(Boolean(d.recordingsEnabled));
+    if (d.recordingsEnabled) api('/recordings').then((r) => setRecordings(r.recordings)).catch(() => {});
+  });
   useEffect(() => {
     load();
     const t = setInterval(load, 15000);
@@ -32,7 +41,7 @@ export default function Rooms() {
     e.preventDefault();
     setError('');
     try {
-      const body: any = { title: form.title, description: form.description, topic: form.topic, startNow: form.startNow };
+      const body: any = { title: form.title, description: form.description, topic: form.topic, startNow: form.startNow, record: form.record };
       if (!form.startNow && form.scheduledAt) body.scheduledAt = new Date(form.scheduledAt).toISOString();
       const res = await api('/rooms', { body });
       navigate(`/piazze/${res.room.id}`);
@@ -47,7 +56,10 @@ export default function Rooms() {
   const card = (r: Room) => (
     <Link key={r.id} to={`/piazze/${r.id}`} className={`room-card ${r.status === 'live' ? 'live' : ''}`}>
       <div className={`room-cover ${coverFor(r)}`}>
-        <span className={`pill ${r.status === 'live' ? 'live' : 'soft'}`}>{r.status === 'live' ? '● IN DIRETTA' : when(r)}</span>
+        <span className="cover-pills">
+          <span className={`pill ${r.status === 'live' ? 'live' : 'soft'}`}>{r.status === 'live' ? '● IN DIRETTA' : when(r)}</span>
+          {r.record && <span className="pill rec">REC</span>}
+        </span>
         {r.topic && <span className="topic">#{r.topic}</span>}
         <h3>{r.title}</h3>
       </div>
@@ -80,6 +92,12 @@ export default function Rooms() {
             <button type="button" className={!form.startNow ? 'on' : ''} onClick={() => setForm({ ...form, startNow: false })}><Icon name="calendar" size={18} /> Programma</button>
           </div>
           {!form.startNow && <label>Quando<input id="roomWhen" type="datetime-local" value={form.scheduledAt} onChange={(e) => setForm({ ...form, scheduledAt: e.target.value })} required /></label>}
+          {recordingsEnabled && (
+            <label className="check">
+              <input type="checkbox" checked={form.record} onChange={(e) => setForm({ ...form, record: e.target.checked })} />
+              <span>Registra la Piazza<small className="muted"> Chi entra viene avvisato. Dopo la fine il video resta nella sezione Registrazioni e puoi cancellarlo quando vuoi.</small></span>
+            </label>
+          )}
           {error && <p className="error">{error}</p>}
           <button className="btn big">{form.startNow ? 'Vai in diretta' : 'Programma la Piazza'}</button>
         </form>
@@ -88,6 +106,11 @@ export default function Rooms() {
       {live.map(card)}
       {upcoming.length > 0 && <h2 className="section-title">In programma</h2>}
       {upcoming.map(card)}
+      {recordings.length > 0 && <h2 className="section-title"><Icon name="video" size={18} /> Registrazioni</h2>}
+      {recordings.map((r) => (
+        <RecordingItem key={r.id} rec={r} canDelete={me?.role === 'admin' || me?.username === r.host?.username}
+          onDeleted={(id) => setRecordings((l) => l.filter((x) => x.id !== id))} />
+      ))}
       {rooms.length === 0 && (
         <div className="the-end">
           <div className="big-ico"><Icon name="live" size={28} /></div>

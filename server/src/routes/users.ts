@@ -20,7 +20,11 @@ export default async function userRoutes(app: FastifyInstance) {
               EXISTS (SELECT 1 FROM follows WHERE follower_id = $2 AND followed_id = $1) AS is_following`,
       [u.id, req.user.id],
     );
-    return { user: publicUser(u), followers: stats.followers, following: stats.following, posts: stats.posts, isFollowing: stats.is_following, isMe: u.id === req.user.id };
+    const { rows: badges } = await query('SELECT id, title, emoji, awarded_at FROM user_badges WHERE user_id = $1 ORDER BY awarded_at DESC', [u.id]);
+    return {
+      user: publicUser(u), followers: stats.followers, following: stats.following, posts: stats.posts, isFollowing: stats.is_following, isMe: u.id === req.user.id,
+      badges: badges.map((b) => ({ id: b.id, title: b.title, emoji: b.emoji, awardedAt: b.awarded_at })),
+    };
   });
 
   app.patch('/me', async (req) => {

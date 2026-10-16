@@ -6,6 +6,7 @@ import { hasRedFlags } from '../rules.js';
 import { saveUpload } from '../uploads.js';
 import { rewardInviterOnce } from '../invites.js';
 import { notify } from '../notify.js';
+import { serializeTrade } from './journal.js';
 
 const PAGE = 20;
 
@@ -15,7 +16,8 @@ const POST_SELECT = `
          u.id AS author_id, u.username, u.display_name, u.avatar_url, u.is_owner AS author_is_owner,
          (SELECT count(*)::int FROM likes l WHERE l.post_id = p.id) AS likes,
          (SELECT count(*)::int FROM comments c WHERE c.post_id = p.id AND c.removed_at IS NULL AND (NOT c.flagged OR c.author_id = $1)) AS comments,
-         EXISTS (SELECT 1 FROM likes l WHERE l.post_id = p.id AND l.user_id = $1) AS liked
+         EXISTS (SELECT 1 FROM likes l WHERE l.post_id = p.id AND l.user_id = $1) AS liked,
+         (SELECT row_to_json(t) FROM trades t WHERE t.id = p.trade_id) AS trade
   FROM posts p JOIN users u ON u.id = p.author_id`;
 
 // Visibile se non rimosso, autore non bloccato, e (se in revisione) solo al suo autore.
@@ -25,7 +27,7 @@ function serialize(r: any) {
   return {
     id: r.id, body: r.body, mediaUrl: r.media_url, mediaType: r.media_type, mediaPoster: r.media_poster, mediaDuration: r.media_duration, inReview: r.flagged, createdAt: r.created_at,
     author: { id: r.author_id, username: r.username, displayName: r.display_name, avatarUrl: r.avatar_url, isOwner: r.author_is_owner },
-    likes: r.likes, comments: r.comments, liked: r.liked,
+    likes: r.likes, comments: r.comments, liked: r.liked, trade: serializeTrade(r.trade),
   };
 }
 

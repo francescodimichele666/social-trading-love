@@ -106,6 +106,12 @@ export default async function accountRoutes(app: FastifyInstance) {
       rooms: (await query('SELECT id, title, description, status, scheduled_at, created_at FROM rooms WHERE host_id = $1 ORDER BY id', [id])).rows,
       reportsMade: (await query('SELECT target_type, target_id, reason, details, created_at FROM reports WHERE reporter_id = $1', [id])).rows,
       notifications: (await query('SELECT kind, message, created_at FROM notifications WHERE user_id = $1 ORDER BY id', [id])).rows,
+      journal: (await query('SELECT * FROM trades WHERE user_id = $1 ORDER BY id', [id])).rows,
+      challenges: (await query(
+        `SELECT c.title, c.starts_on, p.joined_at,
+                (SELECT json_agg(json_build_object('day', k.day, 'kept', k.kept) ORDER BY k.day) FROM challenge_checkins k WHERE k.challenge_id = c.id AND k.user_id = $1) AS checkins
+         FROM challenge_participants p JOIN challenges c ON c.id = p.challenge_id WHERE p.user_id = $1 ORDER BY c.starts_on`, [id])).rows,
+      badges: (await query('SELECT title, emoji, awarded_at FROM user_badges WHERE user_id = $1 ORDER BY awarded_at', [id])).rows,
     };
     reply.header('content-disposition', `attachment; filename="love-trading-club-${user.username}.json"`);
     return data;
@@ -122,6 +128,7 @@ export default async function accountRoutes(app: FastifyInstance) {
        UNION ALL SELECT media_poster FROM posts WHERE author_id = $1 AND media_poster IS NOT NULL`, [req.user.id],
     )).rows.map((r) => r.f as string);
     if (user.avatar_url) files.push(user.avatar_url);
+    const recordings = (await query('SELECT rec.file_name FROM recordings rec JOIN rooms r ON r.id = rec.room_id WHERE r.host_id = $1', [req.user.id])).rows.map((r) => r.file_name as string);
 
     await tx(async (c) => {
       const id = req.user.id;
@@ -129,7 +136,8 @@ export default async function accountRoutes(app: FastifyInstance) {
         'DELETE FROM posts WHERE author_id = $1', 'DELETE FROM comments WHERE author_id = $1', 'DELETE FROM likes WHERE user_id = $1',
         'DELETE FROM follows WHERE follower_id = $1 OR followed_id = $1', 'DELETE FROM notifications WHERE user_id = $1',
         'DELETE FROM room_members WHERE user_id = $1', 'DELETE FROM rooms WHERE host_id = $1', 'DELETE FROM push_subscriptions WHERE user_id = $1',
-        'DELETE FROM password_resets WHERE user_id = $1',
+        'DELETE FROM password_resets WHERE user_id = $1', 'DELETE FROM trades WHERE user_id = $1',
+        'DELETE FROM challenge_checkins WHERE user_id = $1', 'DELETE FROM challenge_participants WHERE user_id = $1', 'DELETE FROM user_badges WHERE user_id = $1',
       ]) await c.query(sql, [id]);
       // Resta solo una riga anonima, perché le decisioni di moderazione già prese devono restare registrate.
       await c.query(
@@ -140,6 +148,8 @@ export default async function accountRoutes(app: FastifyInstance) {
     });
     const dir = path.resolve(config.uploadDir);
     await Promise.all(files.map((f) => unlink(path.join(dir, path.basename(f))).catch(() => {})));
+    const recDir = path.resolve(config.recordingsDir);
+    await Promise.all(recordings.map((f) => unlink(path.join(recDir, path.basename(f))).catch(() => {})));
     return { deleted: true };
   });
 

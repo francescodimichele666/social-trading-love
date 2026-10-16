@@ -7,6 +7,9 @@ import { config } from '../config.js';
 import { hasRedFlags } from '../rules.js';
 import { rewardInviterOnce } from '../invites.js';
 import { closeLiveRoom, createLiveToken, setCanPublish } from '../livekit.js';
+import { refreshRecordings, startRecording } from '../recordings.js';
+import { unlink } from 'node:fs/promises';
+import path from 'node:path';
 
 export const MAX_ON_STAGE = 6;
 const ACTIVE = `last_seen_at > now() - interval '30 seconds'`;
@@ -16,7 +19,15 @@ function serializeRoom(r: any) {
     id: r.id, title: r.title, description: r.description, topic: r.topic, status: r.status,
     scheduledAt: r.scheduled_at, startedAt: r.started_at, endedAt: r.ended_at,
     host: { id: r.host_id, username: r.username, displayName: r.display_name, avatarUrl: r.avatar_url },
-    listeners: r.listeners ?? 0,
+    listeners: r.listeners ?? 0, record: r.record,
+  };
+}
+
+function serializeRecording(r: any) {
+  return {
+    id: r.id, roomId: r.room_id, status: r.status, url: r.status === 'ready' ? `/recordings/${r.file_name}` : null,
+    duration: r.duration, sizeBytes: r.size_bytes == null ? null : Number(r.size_bytes), startedAt: r.started_at, endedAt: r.ended_at,
+    title: r.title, host: r.host_username ? { username: r.host_username, displayName: r.host_display_name, avatarUrl: r.host_avatar_url } : undefined,
   };
 }
 
@@ -40,7 +51,7 @@ export default async function roomRoutes(app: FastifyInstance) {
          AND (r.status = 'live' OR (r.status = 'scheduled' AND r.scheduled_at > now() - interval '12 hours'))
        ORDER BY (r.status = 'live') DESC, r.scheduled_at ASC LIMIT 50`,
     );
-    return { rooms: rows.map(serializeRoom) };
+    return { rooms: rows.map(serializeRoom), recordingsEnabled: config.recordings };
   });
 
   app.post('/rooms', async (req, reply) => {
@@ -50,17 +61,20 @@ export default async function roomRoutes(app: FastifyInstance) {
       topic: z.string().trim().max(30).default(''),
       scheduledAt: z.string().datetime({ offset: true }).optional(),
       startNow: z.boolean().default(false),
+      record: z.boolean().default(false),
     }).parse(req.body);
+    if (data.record && !config.recordings) throw new HttpError(400, 'La registrazione delle Piazze non è attiva su questo server');
     if (hasRedFlags(`${data.title} ${data.description}`)) {
       throw new HttpError(400, 'Titolo o descrizione contengono promesse di guadagno non ammesse dalle regole della comunità');
     }
     const room = await one(
-      `INSERT INTO rooms (host_id, title, description, topic, status, scheduled_at, started_at)
-       VALUES ($1, $2, $3, $4, $5, COALESCE($6::timestamptz, now()), $7) RETURNING id`,
-      [req.user.id, data.title, data.description, data.topic, data.startNow ? 'live' : 'scheduled', data.scheduledAt ?? null, data.startNow ? new Date() : null],
+      `INSERT INTO rooms (host_id, title, description, topic, status, scheduled_at, started_at, record)
+       VALUES ($1, $2, $3, $4, $5, COALESCE($6::timestamptz, now()), $7, $8) RETURNING id`,
+      [req.user.id, data.title, data.description, data.topic, data.startNow ? 'live' : 'scheduled', data.scheduledAt ?? null, data.startNow ? new Date() : null, data.record],
     );
     await query(`INSERT INTO room_members (room_id, user_id, role) VALUES ($1, $2, 'host')`, [room.id, req.user.id]);
     if (data.startNow) await notifyFollowers(req.user.id, req.user.username, room.id, data.title);
+    if (data.startNow && data.record) await startRecording(room.id);
     reply.status(201);
     return { room: serializeRoom(await getRoom(room.id)) };
   });
@@ -85,7 +99,30 @@ export default async function roomRoutes(app: FastifyInstance) {
       raisedHands: isHost ? members.filter((m) => m.role === 'audience' && m.hand_raised_at).map(person) : [],
       me: { role: me?.role ?? null, handRaised: Boolean(me?.hand_raised_at), isHost },
       maxOnStage: MAX_ON_STAGE,
+      recordings: room.status === 'ended' ? await roomRecordings(room.id) : [],
     };
+  });
+
+  // Registrazioni delle Piazze finite, le più recenti prima.
+  app.get('/recordings', async () => {
+    await refreshRecordings();
+    const { rows } = await query(
+      `SELECT rec.*, r.title, u.username AS host_username, u.display_name AS host_display_name, u.avatar_url AS host_avatar_url
+       FROM recordings rec JOIN rooms r ON r.id = rec.room_id JOIN users u ON u.id = r.host_id
+       WHERE rec.removed_at IS NULL AND r.removed_at IS NULL AND u.banned_at IS NULL AND rec.status IN ('ready', 'processing')
+       ORDER BY rec.started_at DESC LIMIT 30`,
+    );
+    return { recordings: rows.map(serializeRecording) };
+  });
+
+  // Chi ha condotto la Piazza o un amministratore può cancellare la registrazione.
+  app.delete<{ Params: { id: string } }>('/recordings/:id', async (req) => {
+    const rec = await one('SELECT rec.id, rec.file_name, r.host_id FROM recordings rec JOIN rooms r ON r.id = rec.room_id WHERE rec.id = $1 AND rec.removed_at IS NULL', [Number(req.params.id)]);
+    if (!rec) throw new HttpError(404, 'Registrazione non trovata');
+    if (rec.host_id !== req.user.id && req.user.role !== 'admin') throw new HttpError(403, 'Solo chi ha condotto la Piazza o un amministratore può cancellarla');
+    await query('UPDATE recordings SET removed_at = now() WHERE id = $1', [rec.id]);
+    await unlink(path.join(path.resolve(config.recordingsDir), path.basename(rec.file_name))).catch(() => {});
+    return { deleted: true };
   });
 
   app.post<{ Params: { id: string } }>('/rooms/:id/start', async (req) => {
@@ -94,6 +131,7 @@ export default async function roomRoutes(app: FastifyInstance) {
     if (room.status !== 'scheduled') throw new HttpError(400, 'La Piazza è già iniziata o finita');
     await query(`UPDATE rooms SET status = 'live', started_at = now() WHERE id = $1`, [room.id]);
     await notifyFollowers(req.user.id, req.user.username, room.id, room.title);
+    if (room.record) await startRecording(room.id);
     return { room: serializeRoom(await getRoom(room.id)) };
   });
 
@@ -172,6 +210,12 @@ export default async function roomRoutes(app: FastifyInstance) {
     await setCanPublish(room.id, userId, false);
     return { role: 'audience' };
   });
+}
+
+async function roomRecordings(roomId: number) {
+  await refreshRecordings();
+  const { rows } = await query(`SELECT * FROM recordings WHERE room_id = $1 AND removed_at IS NULL AND status IN ('ready', 'processing') ORDER BY started_at`, [roomId]);
+  return rows.map(serializeRecording);
 }
 
 async function notifyFollowers(hostId: number, username: string, roomId: number, title: string) {

@@ -121,6 +121,7 @@ Non devi fare niente: il servizio **backup** salva tutto da solo nella cartella 
 - Il primo backup parte all'avvio, poi uno ogni notte alle 3.
 - `db-AAAA-MM-GG.dump` è il database del giorno. Si tengono gli ultimi 14 giorni.
 - La cartella `uploads` contiene tutte le foto e i video.
+- Le **registrazioni delle Piazze** non entrano nel backup, perché occupano molto spazio. Se una ti serve, scaricala dalla pagina Piazze.
 - Nel **Pannello amministratore** vedi quando è stato fatto l'ultimo backup. Se compare in giallo, il PC era spento o il servizio è fermo: lancia `docker compose up -d` nella cartella.
 
 **Importante:** il backup sta sullo stesso PC. Almeno una volta a settimana copia la cartella `backups` su una chiavetta o un disco esterno. Puoi anche farlo in automatico mettendo la cartella dentro OneDrive o Google Drive.
@@ -139,3 +140,24 @@ docker compose start api
 ```
 
 Se qualcosa non ti è chiaro, scrivi a Claude prima di farlo.
+
+## Registrazione delle Piazze
+
+Chi apre una Piazza può spuntare **Registra la Piazza**. Durante la diretta compare la scritta REC e chi entra viene avvisato. Quando la Piazza finisce, il video compare nella pagina **Piazze**, sezione **Registrazioni**, di solito dopo un paio di minuti.
+
+Cosa devi sapere:
+
+- La registrazione la fa il servizio **egress**, che parte da solo con `docker compose up -d`. La prima volta scarica circa 1 GB.
+- Mentre registra usa circa **2 core del processore** e 1 GB di RAM. Su un PC con 8 GB va bene una registrazione alla volta.
+- Un'ora di Piazza occupa circa **300-500 MB** di disco. Cancella quelle che non servono più con il cestino nella pagina Piazze.
+- I video stanno nel volume `recordings` di Docker, sul tuo PC. Non vanno su nessun servizio esterno.
+
+**Se il video non compare** (resta "In preparazione" per più di 10 minuti), lancia in PowerShell nella cartella del social:
+
+```
+docker compose logs egress --tail 50
+```
+
+e mandami quello che esce. La causa più comune è il router che non lascia "rientrare" il PC sul proprio indirizzo pubblico: si risolve con una riga di configurazione.
+
+**Per spegnere le registrazioni del tutto:** apri il file `.env`, scrivi `RECORDINGS=false`, salva e lancia `docker compose up -d`. La casella "Registra la Piazza" sparisce dall'app.

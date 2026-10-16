@@ -31,13 +31,17 @@ services:
       LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET}
       PUBLIC_URL: https://${DOMAIN}
       BACKUP_DIR: /backups
+      RECORDINGS: ${RECORDINGS:-true}
+      RECORDINGS_DIR: /data/recordings
     volumes:
       - uploads:/data/uploads
+      - recordings:/data/recordings
       - ./backups:/backups:ro
 
   livekit:
     image: livekit/livekit-server:v1.9
     restart: unless-stopped
+    depends_on: [redis]
     command: --config /etc/livekit.yaml
     environment:
       LIVEKIT_KEYS: "${LIVEKIT_API_KEY}: ${LIVEKIT_API_SECRET}"
@@ -46,6 +50,29 @@ services:
     ports:
       - "7881:7881"
       - "50000-50100:50000-50100/udp"
+
+  # Collegamento interno tra il server video e il servizio che registra le Piazze.
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+
+  # Registrazione delle Piazze: guarda la Piazza come uno spettatore e salva un MP4 a griglia.
+  # Usa parecchio processore mentre registra (circa 2 core per Piazza registrata).
+  egress:
+    image: livekit/egress:latest
+    restart: unless-stopped
+    depends_on: [livekit, redis]
+    cap_add: [SYS_ADMIN]
+    environment:
+      EGRESS_CONFIG_BODY: |
+        api_key: ${LIVEKIT_API_KEY}
+        api_secret: ${LIVEKIT_API_SECRET}
+        ws_url: ws://livekit:7880
+        redis:
+          address: redis:6379
+        log_level: info
+    volumes:
+      - recordings:/out
 
   web:
     build: ./web
@@ -96,4 +123,5 @@ services:
 volumes:
   db-data:
   uploads:
+  recordings:
   caddy-data:

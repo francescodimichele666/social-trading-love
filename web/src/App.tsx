@@ -20,6 +20,8 @@ import OwnerSettings from './pages/OwnerSettings';
 import { Privacy, Terms } from './pages/Legal';
 import { ForgotPassword, ResetPassword } from './pages/Password';
 import Rules from './pages/Rules';
+import Journal from './pages/Journal';
+import ChallengePage from './pages/ChallengePage';
 
 // La parte video (LiveKit) è pesante: si scarica solo quando si entra in una Piazza.
 const RoomPage = lazy(() => import('./pages/RoomPage'));
@@ -64,6 +66,8 @@ export default function App() {
           <Route path="/piazze" element={<Rooms />} />
           <Route path="/piazze/:id" element={<Suspense fallback={<div className="spinner" />}><RoomPage /></Suspense>} />
           <Route path="/inviti" element={<Invites />} />
+          <Route path="/diario" element={<Journal />} />
+          <Route path="/sfida" element={<ChallengePage />} />
           <Route path="/notifiche" element={<Notifications />} />
           <Route path="/moderazione" element={me.role === 'member' ? <Navigate to="/" /> : <Moderation />} />
           <Route path="/admin" element={me.role === 'admin' ? <Admin /> : <Navigate to="/" />} />

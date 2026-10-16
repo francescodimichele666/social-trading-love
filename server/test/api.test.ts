@@ -6,6 +6,8 @@ process.env.LIVEKIT_SYNC = 'false';
 process.env.UPLOAD_DIR = '/tmp/stl-test-uploads';
 process.env.MAIL_TEST = '1';
 process.env.PUSH = 'false';
+process.env.RECORDINGS = 'true';
+process.env.RECORDINGS_DIR = '/tmp/stl-test-recordings';
 
 const { pool } = await import('../src/db.js');
 const { migrate } = await import('../src/migrate.js');
@@ -415,4 +417,103 @@ test('privacy: scarica i tuoi dati ed elimina l\'account', async () => {
   assert.equal((await p.query(`SELECT count(*)::int AS n FROM posts WHERE author_id = $1`, [hugo.user.id])).rows[0].n, 0);
   // Si può iscrivere di nuovo con la stessa email.
   assert.equal((await call('POST', '/api/register', undefined, person('hugo'))).status, 201);
+});
+
+test('diario di trading: operazione, chiusura, statistiche, condivisione come post', async () => {
+  const bad = await call('POST', '/api/journal', anna, { symbol: 'eni', market: 'azioni', direction: 'long', entryPrice: 14, stopLoss: 15, riskPercent: 1 });
+  assert.equal(bad.status, 400, 'in un long lo stop va sotto il prezzo di ingresso');
+  assert.match(bad.body.error, /sotto/);
+
+  const open = await call('POST', '/api/journal', anna, { symbol: 'eni', market: 'azioni', direction: 'long', entryPrice: 14, stopLoss: 13.5, takeProfit: 15.5, riskPercent: 1, plan: 'Rimbalzo sul supporto' });
+  assert.equal(open.status, 201);
+  assert.equal(open.body.trade.symbol, 'ENI');
+  assert.equal(open.body.trade.rewardRisk, 3);
+  assert.equal(open.body.warning, null);
+
+  const closed = await call('POST', `/api/journal/${open.body.trade.id}/close`, anna, { exitPrice: 15, lesson: 'Ho preso profitto prima del target', emotion: 'calmo', followedPlan: true, movedStop: false });
+  assert.equal(closed.body.trade.resultR, 2);
+  assert.equal(closed.body.trade.resultPercent, 2);
+
+  const short = await call('POST', '/api/journal', anna, { symbol: 'EURUSD', market: 'forex', direction: 'short', entryPrice: 1.1, stopLoss: 1.11, riskPercent: 3, exitPrice: 1.11, movedStop: true });
+  assert.equal(short.body.trade.resultR, -1);
+  assert.match(short.body.warning, /2%/);
+
+  const j = await call('GET', '/api/journal', anna);
+  assert.equal(j.body.stats.closed, 2);
+  assert.equal(j.body.stats.winRate, 50);
+  assert.equal(j.body.stats.avgR, 0.5);
+  assert.equal(j.body.stats.overRisk, 1);
+  assert.equal(j.body.stats.stopStreak, 0, "l'ultima operazione ha spostato lo stop");
+  assert.equal((await call('GET', '/api/journal', bruno)).body.trades.length, 0, 'il diario è privato');
+
+  assert.equal((await call('POST', `/api/journal/${open.body.trade.id}/share`, bruno, { text: 'non mia' })).status, 404);
+  const shared = await call('POST', `/api/journal/${open.body.trade.id}/share`, anna, { text: 'Operazione da manuale' });
+  assert.equal(shared.status, 201);
+  const post = await call('GET', `/api/posts/${shared.body.postId}`, bruno);
+  assert.equal(post.body.post.trade.symbol, 'ENI');
+  assert.equal(post.body.post.trade.resultR, 2);
+  assert.equal(post.body.post.trade.lesson, 'Ho preso profitto prima del target');
+});
+
+test('sfida della settimana: partecipa, check-in, badge sul profilo', async () => {
+  const cur = await call('GET', '/api/challenges/current', anna);
+  assert.equal(cur.status, 200);
+  assert.ok(cur.body.challenge.title);
+  assert.equal(cur.body.challenge.me.joined, false);
+  assert.equal((await call('POST', '/api/challenges/current/checkin', anna, { kept: true })).status, 400, 'prima bisogna partecipare');
+
+  // Solo gli amministratori scelgono la sfida; con 1 giorno richiesto la prova è immediata.
+  assert.equal((await call('PUT', '/api/challenges/current', bruno, { presetKey: 'stop' })).status, 403);
+  const custom = await call('PUT', '/api/challenges/current', admin, { title: 'Prova veloce', description: 'Una sfida di prova per i test.', rule: 'Oggi ho fatto la prova.', emoji: '🧪', requiredDays: 1 });
+  assert.equal(custom.status, 200);
+  assert.equal(custom.body.challenge.title, 'Prova veloce');
+
+  assert.equal((await call('POST', '/api/challenges/current/join', anna)).status, 200);
+  assert.equal((await call('PUT', '/api/challenges/current', admin, { presetKey: 'stop' })).status, 400, 'con partecipanti non si cambia più');
+  assert.equal((await call('PUT', '/api/challenges/next', admin, { presetKey: 'studio' })).status, 200, 'la prossima settimana sì');
+
+  const no = await call('POST', '/api/challenges/current/checkin', anna, { kept: false });
+  assert.equal(no.body.earned, false);
+  const yes = await call('POST', '/api/challenges/current/checkin', anna, { kept: true });
+  assert.equal(yes.body.earned, true);
+  assert.equal(yes.body.challenge.me.keptDays, 1);
+  assert.equal(yes.body.challenge.completed, 1);
+  assert.equal((await call('POST', '/api/challenges/current/checkin', anna, { kept: true })).body.earned, false, 'il badge si prende una volta');
+
+  const profile = await call('GET', '/api/users/anna', bruno);
+  assert.equal(profile.body.badges.length, 1);
+  assert.equal(profile.body.badges[0].emoji, '🧪');
+  const plan = await call('GET', '/api/challenges/plan', admin);
+  assert.equal(plan.body.next.presetKey, 'studio');
+  assert.equal(plan.body.presets.length, 6);
+});
+
+test('Piazze registrate: avviso, registrazione e cancellazione', async () => {
+  const r = await call('POST', '/api/rooms', anna, { title: 'Analisi del venerdì', startNow: true, record: true });
+  assert.equal(r.status, 201);
+  assert.equal(r.body.room.record, true);
+  const { pool: p } = await import('../src/db.js');
+  const rec = (await p.query('SELECT * FROM recordings WHERE room_id = $1', [r.body.room.id])).rows[0];
+  assert.equal(rec.status, 'recording');
+
+  assert.equal((await call('POST', `/api/rooms/${r.body.room.id}/end`, anna)).status, 200);
+  assert.equal((await p.query('SELECT status FROM recordings WHERE id = $1', [rec.id])).rows[0].status, 'processing');
+
+  // Simula Egress che ha finito di scrivere il file.
+  const { mkdir, writeFile } = await import('node:fs/promises');
+  await mkdir('/tmp/stl-test-recordings', { recursive: true });
+  await writeFile(`/tmp/stl-test-recordings/${rec.file_name}`, 'video');
+  await p.query(`UPDATE recordings SET status = 'ready', duration = 1800 WHERE id = $1`, [rec.id]);
+
+  const list = await call('GET', '/api/recordings', bruno);
+  const item = list.body.recordings.find((x: any) => x.id === rec.id);
+  assert.equal(item.title, 'Analisi del venerdì');
+  assert.equal(item.host.username, 'anna');
+  assert.equal((await app.inject({ method: 'GET', url: item.url })).statusCode, 200);
+  const detail = await call('GET', `/api/rooms/${r.body.room.id}`, bruno);
+  assert.equal(detail.body.recordings.length, 1);
+
+  assert.equal((await call('DELETE', `/api/recordings/${rec.id}`, bruno)).status, 403);
+  assert.equal((await call('DELETE', `/api/recordings/${rec.id}`, anna)).status, 200);
+  assert.equal((await app.inject({ method: 'GET', url: item.url })).statusCode, 404, 'il file è cancellato');
 });

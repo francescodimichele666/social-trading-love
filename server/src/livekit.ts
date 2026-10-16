@@ -26,6 +26,8 @@ export async function setCanPublish(roomId: number, userId: number, canPublish: 
 }
 
 export async function closeLiveRoom(roomId: number) {
+  // Se la Piazza era registrata, la registrazione si ferma e il video va in preparazione.
+  await (await import('./recordings.js')).stopRecording(roomId);
   if (!config.livekitSync) return;
   try {
     await service().deleteRoom(roomName(roomId));
