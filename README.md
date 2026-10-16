@@ -1,4 +1,4 @@
-# Social Trading Love
+# Love Trading Club
 
 La comunità gratuita del trading responsabile: post, video, Piazze live con fino a 6 persone sul palco, iscrizione libera e gratuita.
 

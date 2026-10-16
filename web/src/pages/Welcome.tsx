@@ -13,7 +13,7 @@ export default function Welcome() {
       </div>
       <section className="hero">
         <HeartChart size={210} />
-        <h1 className="brand xl">Social Trading <em>Love</em></h1>
+        <h1 className="brand xl"><em>Love</em> Trading Club</h1>
         <p className="lead">La comunità dove il trading si impara insieme, dal vivo, senza promesse facili.</p>
         <Link className="btn big" to="/iscriviti">Iscriviti gratis</Link>
         <Link className="btn ghost big" to="/entra">Ho già un account</Link>

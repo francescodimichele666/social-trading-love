@@ -13,7 +13,7 @@ function New-Secret {
 
 function Write-Step($text) { Write-Host ""; Write-Host "==> $text" -ForegroundColor Cyan }
 
-Write-Host "Social Trading Love - configurazione" -ForegroundColor Green
+Write-Host "Love Trading Club - configurazione" -ForegroundColor Green
 
 # 1. Docker
 Write-Step "Controllo Docker"

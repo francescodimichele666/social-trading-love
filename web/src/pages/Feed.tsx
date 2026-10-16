@@ -36,7 +36,7 @@ export default function Feed({ onCompose }: { onCompose: () => void }) {
   return (
     <div className="page">
       <header className="top">
-        <h1 className="brand small">Trading <em>Love</em></h1>
+        <h1 className="brand small"><em>Love</em> Trading Club</h1>
         <div className="top-actions">
           {me?.role !== 'member' && <Link className="icon-btn" to="/moderazione" aria-label="Moderazione"><Icon name="shield" /></Link>}
           <Link className="icon-btn" to="/inviti" aria-label="Porta un amico"><Icon name="gift" /></Link>

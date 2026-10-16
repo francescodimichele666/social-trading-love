@@ -17,7 +17,7 @@ export default function Invites() {
   const share = async () => {
     const text = 'Ti aspetto nella comunità del trading responsabile: impariamo insieme, dal vivo, senza promesse facili.';
     try {
-      if (navigator.share) { await navigator.share({ title: 'Social Trading Love', text, url: link }); return; }
+      if (navigator.share) { await navigator.share({ title: 'Love Trading Club', text, url: link }); return; }
       await navigator.clipboard.writeText(`${text}\n${link}`);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
