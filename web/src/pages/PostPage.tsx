@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { api, timeAgo, type Post } from '../api';
 import PostCard from '../components/PostCard';
 import Avatar from '../components/Avatar';
@@ -14,6 +14,7 @@ export default function PostPage() {
   const { id } = useParams();
   const { me } = useAuth();
   const navigate = useNavigate();
+  const published = (useLocation().state ?? {}) as { published?: boolean; inReview?: boolean };
   const [post, setPost] = useState<Post | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [text, setText] = useState('');
@@ -42,6 +43,14 @@ export default function PostPage() {
     <div className="page">
       <button className="icon-btn" onClick={() => navigate(-1)} aria-label="Indietro"><Icon name="back" /></button>
       {error && <p className="error">{error}</p>}
+      {published.published && (
+        <div className={`notice ${published.inReview ? '' : 'friendly'} published`}>
+          <span>{published.inReview
+            ? 'Post creato, ma il testo contiene frasi che le regole considerano a rischio: lo vedi solo tu finché un moderatore non lo controlla.'
+            : <>✓ <b>Pubblicato nel feed.</b> Ecco come lo vedono gli altri.</>}</span>
+          <Link className="btn small" to="/">Vai al feed</Link>
+        </div>
+      )}
       {post && <PostCard post={post} onDeleted={() => navigate('/')} />}
       <div className="comments">
         {comments.map((c) => (

@@ -128,7 +128,7 @@ function TradeItem({ t, onChange }: { t: Trade; onChange: () => void }) {
   const doClose = (e: FormEvent) => { e.preventDefault(); run(async () => { await api(`/journal/${t.id}/close`, { body: closingBody(close) }); setMode(''); onChange(); }); };
   const share = () => run(async () => {
     const res = await api<{ postId: number; inReview: boolean }>(`/journal/${t.id}/share`, { body: { text } });
-    navigate(`/post/${res.postId}`);
+    navigate(`/post/${res.postId}`, { state: { published: true, inReview: res.inReview } });
   });
   const remove = () => {
     if (!confirm(`Eliminare ${t.symbol} dal diario? Se l'hai condivisa, la scheda sparisce anche dal post.`)) return;
@@ -142,7 +142,7 @@ function TradeItem({ t, onChange }: { t: Trade; onChange: () => void }) {
         <small className="muted">{new Date(t.closedAt ?? t.openedAt).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}</small>
         <span className="spacer" />
         {t.status === 'open' && <button className="btn small" onClick={() => setMode(mode === 'close' ? '' : 'close')}>Chiudi operazione</button>}
-        {t.status === 'closed' && <button className="btn small ghost" onClick={() => setMode(mode === 'share' ? '' : 'share')}><Icon name="share" size={16} /> Condividi</button>}
+        <button className={`btn small ${t.status === 'closed' ? '' : 'ghost'}`} onClick={() => setMode(mode === 'share' ? '' : 'share')}><Icon name="share" size={16} /> Pubblica</button>
         <button className="icon-btn" onClick={remove} aria-label="Elimina"><Icon name="trash" size={18} /></button>
       </div>
       {mode === 'close' && (
@@ -153,7 +153,7 @@ function TradeItem({ t, onChange }: { t: Trade; onChange: () => void }) {
       )}
       {mode === 'share' && (
         <div className="card form inset">
-          <p className="muted small">La scheda va nel feed con livelli, rischio e lezione. Non si vedono importi in euro, solo percentuali.</p>
+          <p className="muted small">La scheda va nel feed con livelli, rischio e lezione. Non si vedono importi in euro, solo percentuali.{t.status === 'open' && ' Quando chiudi l\'operazione, la scheda nel post si aggiorna da sola con il risultato.'}</p>
           <textarea value={text} onChange={(e) => setText(e.target.value)} maxLength={2000} placeholder="Due righe per raccontarla (facoltativo)" />
           <button className="btn" disabled={busy} onClick={share}>Pubblica nel feed</button>
         </div>

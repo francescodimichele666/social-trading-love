@@ -482,3 +482,4 @@ select { width: 100%; font: inherit; color: var(--text); background: var(--surfa
 .rec-video { width: 100%; margin-top: 10px; border-radius: 14px; background: #000; aspect-ratio: 16 / 9; }
 .room-recordings { padding: 0 16px 16px; }
 @media (max-width: 380px) { .grid-2 { grid-template-columns: 1fr; } .wd i { width: 32px; height: 32px; } }
+.notice.published { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin: 10px 0; }
