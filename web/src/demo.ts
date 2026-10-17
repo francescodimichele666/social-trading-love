@@ -32,12 +32,12 @@ type DemoComment = { id: number; authorId: number; body: string; createdAt: stri
 type DemoPost = { id: number; authorId: number; body: string; mediaUrl: string | null; mediaType: 'image' | 'video' | null; mediaPoster?: string; mediaDuration?: number; createdAt: string; likes: Set<number>; comments: DemoComment[]; flagged?: boolean; tradeId?: number };
 type DemoRoom = { id: number; hostId: number; title: string; description: string; topic: string; status: 'scheduled' | 'live' | 'ended'; scheduledAt: string; startedAt: string | null; stage: number[]; hands: number[]; listeners: number; record?: boolean };
 const posts: DemoPost[] = [
-  { id: 6, authorId: 2, body: 'Dal mio diario: chiusa in guadagno, ma sono uscita prima dell\'obiettivo per paura. Voi lasciate lavorare il piano fino in fondo?', mediaUrl: null, mediaType: null, tradeId: 5, createdAt: ago(55), likes: new Set<number>([1, 3, 4]), comments: [{ id: 3, authorId: 3, body: 'Succede anche a me! Però +2 R resta un ottimo risultato.', createdAt: ago(40) }] },
-  { id: 5, authorId: 2, body: 'Primo video! Come decido lo stop loss prima di entrare, e perché non lo sposto mai. Ditemi come fate voi 👇', mediaUrl: demoVideo, mediaType: 'video' as const, mediaPoster: demoPoster, mediaDuration: 9, createdAt: ago(12), likes: new Set<number>([3, 4]), comments: [{ id: 2, authorId: 4, body: 'Chiarissimo, grazie Giulia!', createdAt: ago(6) }] },
-  { id: 1, authorId: 2, body: 'Operazione chiusa in perdita (-0,8%). Ho rispettato lo stop loss senza spostarlo: per me oggi è una vittoria. Il grafico con il punto di uscita 👇', mediaUrl: chart('#2dd4bf', '0,60 60,80 120,70 180,110 240,130 300,155 340,160'), mediaType: 'image' as const, createdAt: ago(35), likes: new Set<number>([1, 3]), comments: [{ id: 1, authorId: 3, body: 'Rispetto! Io lo spostavo sempre e perdevo il doppio.', createdAt: ago(20) }] },
-  { id: 2, authorId: 3, body: 'Domanda per chi ha più esperienza: come gestite la voglia di "rifarvi" dopo una perdita? Stasera ne parliamo nella Live di Giulia?', mediaUrl: null, mediaType: null, createdAt: ago(80), likes: new Set([2]), comments: [] },
+  { id: 6, authorId: 2, body: 'Dal mio diario: chiusa in guadagno, ma sono uscita prima dell\'obiettivo per paura. Voi lasciate lavorare il piano fino in fondo? #diario #psicologia', mediaUrl: null, mediaType: null, tradeId: 5, createdAt: ago(55), likes: new Set<number>([1, 3, 4]), comments: [{ id: 3, authorId: 3, body: 'Succede anche a me! Però +2 R resta un ottimo risultato.', createdAt: ago(40) }] },
+  { id: 5, authorId: 2, body: 'Primo video! Come decido lo stop loss prima di entrare, e perché non lo sposto mai. Ditemi come fate voi 👇 #stoploss', mediaUrl: demoVideo, mediaType: 'video' as const, mediaPoster: demoPoster, mediaDuration: 9, createdAt: ago(12), likes: new Set<number>([3, 4]), comments: [{ id: 2, authorId: 4, body: 'Chiarissimo, grazie Giulia!', createdAt: ago(6) }] },
+  { id: 1, authorId: 2, body: 'Operazione chiusa in perdita (-0,8%). Ho rispettato lo stop loss senza spostarlo: per me oggi è una vittoria. Il grafico con il punto di uscita 👇 #stoploss #disciplina', mediaUrl: chart('#2dd4bf', '0,60 60,80 120,70 180,110 240,130 300,155 340,160'), mediaType: 'image' as const, createdAt: ago(35), likes: new Set<number>([1, 3]), comments: [{ id: 1, authorId: 3, body: 'Rispetto! Io lo spostavo sempre e perdevo il doppio.', createdAt: ago(20) }] },
+  { id: 2, authorId: 3, body: 'Domanda per chi ha più esperienza: come gestite la voglia di "rifarvi" dopo una perdita? Stasera ne parliamo nella Live di @giulia? #psicologia', mediaUrl: null, mediaType: null, createdAt: ago(80), likes: new Set([2]), comments: [] },
   { id: 3, authorId: 1, body: 'Benvenuti nella comunità! Regola numero uno: mai rischiare più dell\'1% del capitale su una singola operazione. Raccontate anche gli errori: è così che si impara.', mediaUrl: null, mediaType: null, createdAt: ago(300), likes: new Set([2, 3, 4]), comments: [] },
-  { id: 4, authorId: 4, body: 'Piano di accumulo su ETF mondiale: 18 mesi, zero operazioni impulsive. Noioso? Sì. Funziona? Per me sì.', mediaUrl: chart('#a78bfa', '0,170 60,160 120,150 180,140 240,120 300,100 360,80 400,70'), mediaType: 'image' as const, createdAt: ago(600), likes: new Set([1]), comments: [] },
+  { id: 4, authorId: 4, body: 'Piano di accumulo su ETF mondiale: 18 mesi, zero operazioni impulsive. Noioso? Sì. Funziona? Per me sì. #ETF #lungoperiodo', mediaUrl: chart('#a78bfa', '0,170 60,160 120,150 180,140 240,120 300,100 360,80 400,70'), mediaType: 'image' as const, createdAt: ago(600), likes: new Set([1]), comments: [] },
 ];
 
 const rooms: DemoRoom[] = [
@@ -157,7 +157,7 @@ const adminUsers = () => [...users, { id: 9, username: 'guru_vip', displayName: 
     createdAt: ago(60 * 24 * (40 - i * 9)), lastLoginAt: u.id === ME ? new Date().toISOString() : extra.lastLoginAt,
     emailVerified: extra.emailVerified, twoFactor: u.id === ME ? myTwoFactor : extra.twoFactor,
     suspended: Boolean(s), suspendedAt: s?.suspendedAt ?? null, suspendReason: s?.reason ?? null,
-    posts: posts.filter((p) => p.authorId === u.id).length, invitedBy: u.id === 3 ? 'francesco' : null,
+    posts: posts.filter((p) => p.authorId === u.id).length, invitedBy: u.id === 3 ? 'francesco' : null, mentor: mentors.has(u.id),
   };
 });
 
@@ -204,7 +204,10 @@ const RULES = [
 const RED_FLAGS = ['guadagno sicuro', 'guadagni sicuri', 'garantit', 'senza rischi', 'gruppo vip', 'segnali vip', 'scrivimi in privato', 'diventa ricco'];
 
 const user = (id: number) => users.find((u) => u.id === id)!;
-const brief = (u: U) => ({ id: u.id, username: u.username, displayName: u.displayName, avatarUrl: u.avatarUrl, isOwner: Boolean(u.isOwner) });
+const mentors = new Set<number>([2]);
+const brief = (u: U) => ({ id: u.id, username: u.username, displayName: u.displayName, avatarUrl: u.avatarUrl, isOwner: Boolean(u.isOwner), isMentor: mentors.has(u.id) });
+const DEMO_TAG = /(?:^|[^\p{L}\p{N}_])#([\p{L}\p{N}_]{2,30})/gu;
+const demoTags = (text: string) => [...new Set([...text.matchAll(DEMO_TAG)].map((x) => x[1].toLowerCase()))];
 const visible = (p: DemoPost) => !p.flagged || p.authorId === ME;
 const serializePost = (p: DemoPost) => ({
   id: p.id, body: p.body, mediaUrl: p.mediaUrl, mediaType: p.mediaType, mediaPoster: p.mediaPoster ?? null, mediaDuration: p.mediaDuration ?? null, inReview: Boolean(p.flagged), createdAt: p.createdAt,
@@ -346,7 +349,7 @@ export async function demoApi(path: string, method: string, body: any): Promise<
     const u = users.find((x) => x.username === match![1]);
     if (!u) throw new DemoError(404, 'Utente non trovato');
     const followers = u.id === ME ? 3 : following.has(u.id) ? 2 : 1;
-    return { user: u, followers, following: u.id === ME ? following.size : 2, posts: posts.filter((p) => p.authorId === u.id).length, isFollowing: following.has(u.id), isMe: u.id === ME,
+    return { user: { ...u, isMentor: mentors.has(u.id) }, followers, following: u.id === ME ? following.size : 2, posts: posts.filter((p) => p.authorId === u.id).length, isFollowing: following.has(u.id), isMe: u.id === ME,
       badges: badges.filter((b) => b.userId === u.id).map(({ id, title, emoji, awardedAt }) => ({ id, title, emoji, awardedAt })) };
   }
   if (route === '/me/avatar') {
@@ -360,7 +363,29 @@ export async function demoApi(path: string, method: string, body: any): Promise<
     u.role = body.role;
     return { role: body.role };
   }
-  if (route === '/invites') return { code: 'K7PQ2MXA', joined: friends.length, active: friends.filter((f) => f.active).length, friends };
+  if (route === '/invites') {
+    const leaderboard = [[2, 4], [1, 2], [4, 1]].map(([id, active], i) => ({ rank: i + 1, ...brief(user(id)), active, isMe: id === ME }));
+    return { code: 'K7PQ2MXA', joined: friends.length, active: friends.filter((f) => f.active).length, friends, leaderboard };
+  }
+  if (route === '/mentors') return { users: users.filter((u) => mentors.has(u.id)).map((u) => ({ ...u, isMentor: true })) };
+  if (route === '/hashtags/trending' || route === '/search') {
+    const count = new Map<string, number>();
+    posts.filter(visible).forEach((p) => demoTags(p.body).forEach((t) => count.set(t, (count.get(t) ?? 0) + 1)));
+    const all = [...count].map(([tag, n]) => ({ tag, posts: n })).sort((a, b) => b.posts - a.posts || a.tag.localeCompare(b.tag));
+    if (route === '/hashtags/trending') return { tags: all };
+    const raw = (params.get('q') ?? '').trim();
+    const isTag = raw.startsWith('#');
+    const q = raw.replace(/^[#@]/, '').toLowerCase();
+    return {
+      users: isTag ? [] : users.filter((u) => `${u.username} ${u.displayName}`.toLowerCase().includes(q)).map((u) => ({ ...u, isMentor: mentors.has(u.id) })),
+      posts: posts.filter(visible).filter((p) => (isTag ? demoTags(p.body).includes(q) : p.body.toLowerCase().includes(q))).map(serializePost),
+      tags: all.filter((t) => t.tag.startsWith(q)),
+    };
+  }
+  if ((match = m(/^\/hashtags\/([^/]+)\/posts$/))) {
+    const tag = decodeURIComponent(match[1]).toLowerCase();
+    return { tag, posts: posts.filter(visible).filter((p) => demoTags(p.body).includes(tag)).map(serializePost), nextPage: null };
+  }
   if (route === '/notifications/read') { notifications.forEach((n) => (n.read = true)); return { ok: true }; }
   if (route === '/notifications') return { notifications };
   if (route === '/report-reasons') {
@@ -406,7 +431,7 @@ export async function demoApi(path: string, method: string, body: any): Promise<
     const all = adminUsers();
     const test: Record<string, (u: any) => boolean> = {
       all: () => true, staff: (u) => u.role !== 'member', suspended: (u) => u.suspended, unverified: (u) => !u.emailVerified,
-      twofactor: (u) => u.twoFactor, new: (u) => Date.now() - +new Date(u.createdAt) < 7 * 86400000,
+      twofactor: (u) => u.twoFactor, mentor: (u) => u.mentor, new: (u) => Date.now() - +new Date(u.createdAt) < 7 * 86400000,
     };
     const counts = Object.fromEntries(Object.entries(test).map(([k, f]) => [k, all.filter(f).length]));
     const list = all.filter(test[filter]).filter((u) => !q || `${u.username} ${u.displayName} ${u.email}`.toLowerCase().includes(q));
@@ -418,6 +443,11 @@ export async function demoApi(path: string, method: string, body: any): Promise<
     if (!u) throw new DemoError(404, 'Utente non trovato');
     const action = match[2];
     const extra = demoUserExtra[id] ?? (demoUserExtra[id] = { lastLoginAt: ago(id * 37), emailVerified: id !== 4, twoFactor: id === 2, history: [] });
+    if (action === 'mentor') {
+      if (body.mentor) mentors.add(id); else mentors.delete(id);
+      extra.history.unshift({ action: body.mentor ? 'mentor' : 'unmentor', statement: body.mentor ? 'Badge Mentore assegnato' : 'Badge Mentore tolto', createdAt: new Date().toISOString(), by: 'francesco' });
+      return { mentor: body.mentor };
+    }
     if (action) {
       if (u.isOwner) throw new DemoError(403, 'Il proprietario non si può modificare da qui');
       const log = (a: string, st: string) => extra.history.unshift({ action: a, statement: st, createdAt: new Date().toISOString(), by: 'francesco' });

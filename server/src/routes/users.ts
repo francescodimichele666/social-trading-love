@@ -73,9 +73,22 @@ export default async function userRoutes(app: FastifyInstance) {
     return { users: rows.map(publicUser) };
   });
 
-  // Porta un amico: codice personale riutilizzabile e chi si è iscritto grazie a te.
+  // I Mentori della comunità, per chi cerca qualcuno da cui imparare.
+  app.get('/mentors', async () => {
+    const { rows } = await query('SELECT * FROM users WHERE mentor_since IS NOT NULL AND banned_at IS NULL AND deleted_at IS NULL ORDER BY mentor_since LIMIT 50');
+    return { users: rows.map(publicUser) };
+  });
+
+  // Porta un amico: codice personale riutilizzabile, chi si è iscritto grazie a te e la classifica del mese.
   app.get('/invites', async (req) => {
     const code = await friendCodeFor(req.user.id);
+    // Contano solo gli amici "attivi" (hanno pubblicato o sono entrati in una Live), così la classifica premia chi porta persone vere.
+    const { rows: board } = await query(
+      `SELECT i.id, i.username, i.display_name, i.avatar_url, i.mentor_since, i.is_owner, count(*)::int AS active
+       FROM users u JOIN users i ON i.id = u.invited_by
+       WHERE u.invite_rewarded AND u.banned_at IS NULL AND i.banned_at IS NULL AND u.created_at > date_trunc('month', now())
+       GROUP BY i.id ORDER BY active DESC, min(u.created_at) LIMIT 10`,
+    );
     const { rows } = await query(
       `SELECT username, display_name, avatar_url, invite_rewarded AS active, created_at FROM users
        WHERE invited_by = $1 AND banned_at IS NULL ORDER BY created_at DESC`,
@@ -86,6 +99,10 @@ export default async function userRoutes(app: FastifyInstance) {
       joined: rows.length,
       active: rows.filter((r) => r.active).length,
       friends: rows.map((r) => ({ username: r.username, displayName: r.display_name, avatarUrl: r.avatar_url, active: r.active, joinedAt: r.created_at })),
+      leaderboard: board.map((b, i) => ({
+        rank: i + 1, username: b.username, displayName: b.display_name, avatarUrl: b.avatar_url,
+        isMentor: Boolean(b.mentor_since), isOwner: b.is_owner, active: b.active, isMe: Number(b.id) === req.user.id,
+      })),
     };
   });
 }

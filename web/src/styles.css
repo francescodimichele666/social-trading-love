@@ -541,3 +541,29 @@ select { width: 100%; font: inherit; color: var(--text); background: var(--surfa
 .live-person-actions { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 10px 10px; }
 .live-out { border-top: 1px solid var(--line); padding-top: 4px; }
 .live-panel .segmented button { white-space: nowrap; }
+
+/* Hashtag, ricerca e Mentori */
+.hashtag { color: var(--teal); font-weight: 700; }
+.mentor-badge { display: inline-flex; align-items: center; gap: 3px; margin-left: 6px; padding: 2px 7px; border-radius: 999px; font-size: .66rem; font-weight: 800; letter-spacing: .03em; vertical-align: middle; color: var(--gold); background: rgba(255, 200, 97, .14); white-space: nowrap; }
+.mentor-badge.big { margin: 4px 0 0; padding: 5px 12px; font-size: .8rem; }
+.search-box { display: flex; align-items: center; gap: 10px; padding: 0 14px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line); color: var(--muted); }
+.search-box:focus-within { border-color: var(--teal); }
+.search-box input { flex: 1; border: 0; background: none; padding: 14px 0; min-width: 0; }
+.search-box input:focus { background: none; }
+.search-section { display: grid; gap: 8px; margin-top: 14px; }
+.search-tabs { margin-top: 12px; }
+.tag-cloud { display: flex; flex-wrap: wrap; gap: 8px; }
+.tag-chip { display: inline-flex; align-items: baseline; gap: 6px; padding: 8px 14px; border-radius: 999px; background: rgba(52, 227, 196, .1); border: 1px solid rgba(52, 227, 196, .25); font-weight: 700; }
+.tag-chip small { color: var(--muted); font-weight: 600; font-size: .72rem; }
+a.tag { cursor: pointer; }
+
+/* Inviti */
+.share-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; max-width: 360px; }
+.share-btn { display: flex; align-items: center; justify-content: center; padding: 12px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface-2); color: var(--text); font-weight: 700; font: inherit; font-weight: 700; cursor: pointer; }
+.share-btn.whatsapp { background: #25d366; border-color: #25d366; color: #062b16; }
+.share-btn.telegram { background: #2aabee; border-color: #2aabee; color: #04202f; }
+.invite-qr { display: grid; justify-items: center; gap: 8px; text-align: center; }
+.leaderboard { display: grid; gap: 6px; margin: 8px 0 14px; }
+.leader .rank { width: 28px; text-align: center; font-family: var(--display); font-size: 1.05rem; flex: none; }
+.leader.me { box-shadow: inset 0 0 0 1px rgba(52, 227, 196, .45); }
+.search-box input, .search-box input:focus { border: 0; outline: none; box-shadow: none; }

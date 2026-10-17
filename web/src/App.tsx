@@ -11,6 +11,8 @@ import Feed from './pages/Feed';
 import PostPage from './pages/PostPage';
 import Profile from './pages/Profile';
 import Rooms from './pages/Rooms';
+import Search from './pages/Search';
+import Tag from './pages/Tag';
 import Invites from './pages/Invites';
 import Notifications from './pages/Notifications';
 import Moderation from './pages/Moderation';
@@ -75,6 +77,8 @@ export default function App() {
           <Route path="/piazze/:id" element={<OldRoomLink />} />
           <Route path="/live/:id" element={<Suspense fallback={<div className="spinner" />}><RoomPage /></Suspense>} />
           <Route path="/inviti" element={<Invites />} />
+          <Route path="/cerca" element={<Search />} />
+          <Route path="/tag/:tag" element={<Tag />} />
           <Route path="/diario" element={<Journal />} />
           <Route path="/sfida" element={<ChallengePage />} />
           <Route path="/notifiche" element={<Notifications />} />

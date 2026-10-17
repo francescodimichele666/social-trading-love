@@ -8,6 +8,8 @@ import ReportButton from './ReportButton';
 import VideoPlayer from './VideoPlayer';
 import RemoveButton from './RemoveButton';
 import TradeCard from './TradeCard';
+import RichText from './RichText';
+import MentorBadge from './MentorBadge';
 
 export default function PostCard({ post, onDeleted }: { post: Post; onDeleted?: (id: number) => void }) {
   const { me } = useAuth();
@@ -47,11 +49,11 @@ export default function PostCard({ post, onDeleted }: { post: Post; onDeleted?: 
       <header className="post-head">
         <Link to={`/u/${post.author.username}`} className="who">
           <Avatar user={post.author} size={42} />
-          <span><strong>{post.author.displayName}</strong><small>@{post.author.username} · {timeAgo(post.createdAt)}</small></span>
+          <span><strong>{post.author.displayName}{post.author.isMentor && <MentorBadge />}</strong><small>@{post.author.username} · {timeAgo(post.createdAt)}</small></span>
         </Link>
         {post.inReview && <span className="pill warn">In revisione</span>}
       </header>
-      {post.body && <p className="post-body">{post.body}</p>}
+      {post.body && <RichText className="post-body" text={post.body} />}
       {post.trade && <TradeCard trade={post.trade} />}
       {post.mediaUrl && post.mediaType === 'image' && <img className="media" src={post.mediaUrl} alt="" loading="lazy" onDoubleClick={() => !liked && toggleLike()} />}
       {post.mediaUrl && post.mediaType === 'video' && <VideoPlayer src={post.mediaUrl} poster={post.mediaPoster} duration={post.mediaDuration} />}

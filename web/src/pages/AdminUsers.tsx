@@ -10,23 +10,23 @@ type AdminUser = {
   id: number; username: string; displayName: string; email: string; avatarUrl: string | null;
   role: 'member' | 'moderator' | 'admin'; isOwner: boolean; createdAt: string; lastLoginAt: string | null;
   emailVerified: boolean; twoFactor: boolean; suspended: boolean; suspendedAt: string | null; suspendReason: string | null;
-  posts: number; invitedBy: string | null;
+  posts: number; invitedBy: string | null; mentor: boolean;
 };
 type Detail = {
   user: AdminUser & { birthDate: string; comments: number; followers: number; invited: number; trades: number; rooms: number; reports: number };
   history: { action: string; statement: string; createdAt: string; by: string | null }[];
   canManage: boolean;
 };
-type Counts = Record<'all' | 'staff' | 'suspended' | 'unverified' | 'twofactor' | 'new', number>;
+type Counts = Record<'all' | 'staff' | 'suspended' | 'unverified' | 'twofactor' | 'new' | 'mentor', number>;
 
 const FILTERS: { key: keyof Counts; label: string }[] = [
-  { key: 'all', label: 'Tutti' }, { key: 'new', label: 'Nuovi 7 giorni' }, { key: 'staff', label: 'Staff' },
+  { key: 'all', label: 'Tutti' }, { key: 'new', label: 'Nuovi 7 giorni' }, { key: 'staff', label: 'Staff' }, { key: 'mentor', label: 'Mentori' },
   { key: 'suspended', label: 'Sospesi' }, { key: 'unverified', label: 'Email da confermare' }, { key: 'twofactor', label: 'Con due passaggi' },
 ];
 const ROLE_LABEL = { member: 'Membro', moderator: 'Moderatore', admin: 'Amministratore' } as const;
 const ACTION_LABEL: Record<string, string> = {
   ban: 'Sospeso', reinstate: 'Riattivato', remove: 'Contenuto rimosso', dismiss: 'Segnalazione archiviata',
-  reset_2fa: 'Due passaggi disattivati', logout: 'Accessi chiusi', verify_email: 'Email confermata a mano',
+  reset_2fa: 'Due passaggi disattivati', logout: 'Accessi chiusi', verify_email: 'Email confermata a mano', mentor: 'Badge Mentore assegnato', unmentor: 'Badge Mentore tolto',
 };
 
 const date = (iso: string) => new Date(iso).toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -37,6 +37,7 @@ function Badges({ u }: { u: AdminUser }) {
       {u.isOwner ? <span className="pill">Proprietario</span> : u.role !== 'member' && <span className="pill">{ROLE_LABEL[u.role]}</span>}
       {u.suspended && <span className="pill danger">Sospeso</span>}
       {!u.emailVerified && <span className="pill warn">Email da confermare</span>}
+      {u.mentor && <span className="pill">🎓 Mentore</span>}
       {u.twoFactor && <span className="pill soft">🔐 2 passaggi</span>}
     </span>
   );
@@ -118,6 +119,15 @@ function UserSheet({ id, onClose, onChanged }: { id: number; onClose: () => void
                       onClick={() => act(`/moderation/users/${u.id}/role`, { role: r }, `Ora è ${ROLE_LABEL[r].toLowerCase()}.`)}>{ROLE_LABEL[r]}</button>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {!u.suspended && (u.id !== me?.id || me?.isOwner) && (
+              <div className="sheet-block">
+                <button className={`action-row ${u.mentor ? '' : 'good'}`} disabled={busy}
+                  onClick={() => act(`/admin/users/${u.id}/mentor`, { mentor: !u.mentor }, u.mentor ? 'Badge Mentore tolto.' : 'Ora è Mentore: il badge compare sul profilo e nei post.')}>
+                  <Icon name="mentor" size={18} /> {u.mentor ? 'Togli il badge Mentore' : 'Nomina Mentore'}
+                </button>
               </div>
             )}
 

@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { api, type Post, type User } from '../api';
 import { useAuth } from '../auth';
 import Avatar from '../components/Avatar';
+import MentorBadge from '../components/MentorBadge';
 import PostCard from '../components/PostCard';
 import ReportButton from '../components/ReportButton';
 import Icon from '../components/Icon';
@@ -79,8 +80,9 @@ export default function Profile() {
         <input ref={avatarInput} type="file" accept="image/*" hidden onChange={(e) => e.target.files?.[0] && uploadAvatar(e.target.files[0])} />
         <h1>{u.displayName}</h1>
         <p className="muted">@{u.username}{u.role !== 'member' && <span className="pill">{u.isOwner ? 'Proprietario' : u.role === 'admin' ? 'Amministratore' : 'Moderatore'}</span>}</p>
+        {u.isMentor && <MentorBadge big />}
         {u.bio && <p>{u.bio}</p>}
-        {u.interests.length > 0 && <div className="tags">{u.interests.map((t) => <span key={t} className="tag">#{t}</span>)}</div>}
+        {u.interests.length > 0 && <div className="tags">{u.interests.map((t) => <Link key={t} className="tag" to={`/tag/${encodeURIComponent(t.toLowerCase().replace(/[^\p{L}\p{N}_]/gu, ''))}`}>#{t}</Link>)}</div>}
         {data.badges && data.badges.length > 0 && (
           <div className="badges" aria-label="Badge delle sfide">
             {data.badges.map((b) => (

@@ -28,7 +28,7 @@ export function isAdult(birthDate: string, now = new Date()): boolean {
 export function publicUser(u: any) {
   return {
     id: u.id, username: u.username, displayName: u.display_name, bio: u.bio, interests: u.interests,
-    avatarUrl: u.avatar_url, role: u.role, isOwner: u.is_owner, createdAt: u.created_at,
+    avatarUrl: u.avatar_url, role: u.role, isOwner: u.is_owner, createdAt: u.created_at, isMentor: Boolean(u.mentor_since),
   };
 }
 

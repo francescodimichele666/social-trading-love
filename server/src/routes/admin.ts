@@ -127,6 +127,7 @@ export default async function adminRoutes(app: FastifyInstance) {
     unverified: 'u.email_verified_at IS NULL',
     twofactor: 'u.totp_secret IS NOT NULL',
     new: "u.created_at > now() - interval '7 days'",
+    mentor: 'u.mentor_since IS NOT NULL',
   } as const;
 
   const serializeAdminUser = (u: any) => ({
@@ -134,7 +135,7 @@ export default async function adminRoutes(app: FastifyInstance) {
     role: u.role, isOwner: u.is_owner, createdAt: u.created_at, lastLoginAt: u.last_login_at,
     emailVerified: Boolean(u.email_verified_at), twoFactor: Boolean(u.totp_secret),
     suspended: Boolean(u.banned_at), suspendedAt: u.banned_at, suspendReason: u.ban_reason,
-    posts: u.posts ?? 0, invitedBy: u.invited_by_username ?? null,
+    posts: u.posts ?? 0, invitedBy: u.invited_by_username ?? null, mentor: Boolean(u.mentor_since),
   });
 
   app.get('/admin/users', async (req) => {
@@ -248,6 +249,22 @@ export default async function adminRoutes(app: FastifyInstance) {
       await log(c, req.user.id, target.id, 'verify_email', 'Email confermata a mano da un amministratore');
     });
     return { done: true };
+  });
+
+  // Badge Mentore: un membro esperto a cui i nuovi possono fare riferimento. Lo danno il proprietario e gli amministratori.
+  app.post<{ Params: { id: string } }>('/admin/users/:id/mentor', async (req) => {
+    const { mentor } = z.object({ mentor: z.boolean() }).parse(req.body);
+    const target = await one('SELECT id, mentor_since, banned_at FROM users WHERE id = $1 AND deleted_at IS NULL', [Number(req.params.id)]);
+    if (!target) throw new HttpError(404, 'Utente non trovato');
+    if (Number(target.id) === req.user.id && !req.user.isOwner) throw new HttpError(400, 'Il badge Mentore te lo può dare un altro amministratore');
+    if (mentor && target.banned_at) throw new HttpError(400, 'Un account sospeso non può essere Mentore');
+    if (mentor === Boolean(target.mentor_since)) return { mentor };
+    await tx(async (c) => {
+      await c.query('UPDATE users SET mentor_since = $2, mentor_by = $3 WHERE id = $1', [target.id, mentor ? new Date() : null, mentor ? req.user.id : null]);
+      await log(c, req.user.id, target.id, mentor ? 'mentor' : 'unmentor', mentor ? 'Badge Mentore assegnato' : 'Badge Mentore tolto');
+      if (mentor) await notify(target.id, 'moderation', 'Sei diventato Mentore della comunità: il badge compare sul tuo profilo e nei tuoi post. Grazie per aiutare chi inizia!', null, c);
+    });
+    return { mentor };
   });
 
   app.post<{ Params: { id: string } }>('/admin/users/:id/password-reset', async (req) => {

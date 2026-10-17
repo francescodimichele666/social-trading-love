@@ -13,7 +13,7 @@ const PAGE = 20;
 // Campi comuni per mostrare un post. $1 è sempre l'id di chi guarda.
 const POST_SELECT = `
   SELECT p.id, p.body, p.media_url, p.media_type, p.media_poster, p.media_duration, p.flagged, p.created_at,
-         u.id AS author_id, u.username, u.display_name, u.avatar_url, u.is_owner AS author_is_owner,
+         u.id AS author_id, u.username, u.display_name, u.avatar_url, u.is_owner AS author_is_owner, u.mentor_since AS author_mentor_since,
          (SELECT count(*)::int FROM likes l WHERE l.post_id = p.id) AS likes,
          (SELECT count(*)::int FROM comments c WHERE c.post_id = p.id AND c.removed_at IS NULL AND (NOT c.flagged OR c.author_id = $1)) AS comments,
          EXISTS (SELECT 1 FROM likes l WHERE l.post_id = p.id AND l.user_id = $1) AS liked,
@@ -26,7 +26,7 @@ const VISIBLE = `p.removed_at IS NULL AND u.banned_at IS NULL AND (NOT p.flagged
 function serialize(r: any) {
   return {
     id: r.id, body: r.body, mediaUrl: r.media_url, mediaType: r.media_type, mediaPoster: r.media_poster, mediaDuration: r.media_duration, inReview: r.flagged, createdAt: r.created_at,
-    author: { id: r.author_id, username: r.username, displayName: r.display_name, avatarUrl: r.avatar_url, isOwner: r.author_is_owner },
+    author: { id: r.author_id, username: r.username, displayName: r.display_name, avatarUrl: r.avatar_url, isOwner: r.author_is_owner, isMentor: Boolean(r.author_mentor_since) },
     likes: r.likes, comments: r.comments, liked: r.liked, trade: serializeTrade(r.trade),
   };
 }
@@ -37,6 +37,12 @@ async function flagForReview(targetType: 'post' | 'comment', targetId: number) {
     [targetType, targetId],
   );
 }
+
+// Hashtag: # seguito da 2-30 lettere, numeri o _ (accenti compresi). Sempre minuscoli.
+export const TAG_RE = /(?:^|[^\p{L}\p{N}_])#([\p{L}\p{N}_]{2,30})/gu;
+export const tagsIn = (text: string) => [...new Set([...text.matchAll(TAG_RE)].map((m) => m[1].toLowerCase()))];
+// Stessa regola in SQL (POSIX), per cercare i post con un hashtag.
+const tagPattern = (tag: string) => `(^|[^[:alnum:]_])#${tag.replace(/[^\p{L}\p{N}_]/gu, '')}([^[:alnum:]_]|$)`;
 
 export default async function postRoutes(app: FastifyInstance) {
   app.addHook('preHandler', app.authenticate);
@@ -102,11 +108,61 @@ export default async function postRoutes(app: FastifyInstance) {
     return { posts: rows.slice(0, PAGE).map(serialize), nextPage: rows.length > PAGE ? page + 1 : null };
   });
 
+  // Ricerca: persone, post e hashtag. Con "#parola" cerca solo i post con quell'hashtag.
+  app.get<{ Querystring: { q?: string } }>('/search', async (req) => {
+    const raw = (req.query.q ?? '').trim().slice(0, 60);
+    const isTag = raw.startsWith('#');
+    const q = raw.replace(/^[#@]/, '').toLowerCase();
+    if (q.length < 2) return { users: [], posts: [], tags: [] };
+    const like = `%${q.replace(/[%_\\]/g, '\\$&')}%`;
+    const { rows: users } = isTag ? { rows: [] as any[] } : await query(
+      `SELECT * FROM users WHERE banned_at IS NULL AND deleted_at IS NULL AND (username LIKE $1 OR lower(display_name) LIKE $1)
+       ORDER BY (username = $2) DESC, (mentor_since IS NOT NULL) DESC, username LIMIT 10`,
+      [like, q],
+    );
+    const { rows: posts } = await query(
+      `${POST_SELECT} WHERE ${VISIBLE} AND ${isTag ? 'p.body ~* $2' : 'p.body ILIKE $2'} ORDER BY p.created_at DESC LIMIT 30`,
+      [req.user.id, isTag ? tagPattern(q) : like],
+    );
+    const { rows: tags } = await query(
+      `SELECT tag, count(*)::int AS posts FROM (
+         SELECT DISTINCT p.id, lower(m[1]) AS tag FROM posts p, regexp_matches(p.body, '#([[:alnum:]_]{2,30})', 'g') m
+         WHERE p.removed_at IS NULL AND NOT p.flagged) t
+       WHERE tag LIKE $1 GROUP BY tag ORDER BY posts DESC, tag LIMIT 8`,
+      [`${q.replace(/[%_\\]/g, '\\$&')}%`],
+    );
+    const { publicUser } = await import('./auth.js');
+    return { users: users.map(publicUser), posts: posts.map(serialize), tags };
+  });
+
+  // Gli hashtag più usati negli ultimi 7 giorni, per la pagina Cerca.
+  app.get('/hashtags/trending', async () => {
+    const { rows } = await query(
+      `SELECT tag, count(*)::int AS posts FROM (
+         SELECT DISTINCT p.id, lower(m[1]) AS tag FROM posts p JOIN users u ON u.id = p.author_id,
+                regexp_matches(p.body, '#([[:alnum:]_]{2,30})', 'g') m
+         WHERE p.removed_at IS NULL AND NOT p.flagged AND u.banned_at IS NULL AND p.created_at > now() - interval '7 days') t
+       GROUP BY tag ORDER BY posts DESC, tag LIMIT 12`,
+    );
+    return { tags: rows };
+  });
+
+  app.get<{ Params: { tag: string }; Querystring: { page?: string } }>('/hashtags/:tag/posts', async (req) => {
+    const tag = req.params.tag.toLowerCase().replace(/^#/, '');
+    if (!/^[\p{L}\p{N}_]{2,30}$/u.test(tag)) throw new HttpError(400, 'Hashtag non valido');
+    const page = Math.max(0, Number(req.query.page ?? 0) || 0);
+    const { rows } = await query(
+      `${POST_SELECT} WHERE ${VISIBLE} AND p.body ~* $2 ORDER BY p.created_at DESC, p.id DESC LIMIT $3 OFFSET $4`,
+      [req.user.id, tagPattern(tag), PAGE + 1, page * PAGE],
+    );
+    return { tag, posts: rows.slice(0, PAGE).map(serialize), nextPage: rows.length > PAGE ? page + 1 : null };
+  });
+
   app.get<{ Params: { id: string } }>('/posts/:id', async (req) => {
     const post = await one(`${POST_SELECT} WHERE p.id = $2 AND ${VISIBLE}`, [req.user.id, Number(req.params.id)]);
     if (!post) throw new HttpError(404, 'Post non trovato');
     const { rows } = await query(
-      `SELECT c.id, c.body, c.flagged, c.created_at, u.id AS author_id, u.username, u.display_name, u.avatar_url, u.is_owner
+      `SELECT c.id, c.body, c.flagged, c.created_at, u.id AS author_id, u.username, u.display_name, u.avatar_url, u.is_owner, u.mentor_since
        FROM comments c JOIN users u ON u.id = c.author_id
        WHERE c.post_id = $2 AND c.removed_at IS NULL AND u.banned_at IS NULL AND (NOT c.flagged OR c.author_id = $1)
        ORDER BY c.created_at`,
@@ -114,7 +170,7 @@ export default async function postRoutes(app: FastifyInstance) {
     );
     return {
       post: serialize(post),
-      comments: rows.map((c) => ({ id: c.id, body: c.body, inReview: c.flagged, createdAt: c.created_at, author: { id: c.author_id, username: c.username, displayName: c.display_name, avatarUrl: c.avatar_url, isOwner: c.is_owner } })),
+      comments: rows.map((c) => ({ id: c.id, body: c.body, inReview: c.flagged, createdAt: c.created_at, author: { id: c.author_id, username: c.username, displayName: c.display_name, avatarUrl: c.avatar_url, isOwner: c.is_owner, isMentor: Boolean(c.mentor_since) } })),
     };
   });
 

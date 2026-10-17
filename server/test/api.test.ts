@@ -700,3 +700,47 @@ test('codice di prova per iscriversi finché la casella email non è impostata',
     if (saved) await pool.query(`INSERT INTO settings (key, value) VALUES ('mail', $1)`, [saved]);
   }
 });
+
+test('ricerca, hashtag e badge Mentore', async () => {
+  const sara = (await call('POST', '/api/register', undefined, person('sara'))).body.token;
+  await call('POST', '/api/posts', sara, { body: 'Il mio piano su #ETF mondiale, senza fretta. #LungoPeriodo' });
+  await call('POST', '/api/posts', sara, { body: 'Ho letto di #ETFtematici ma non fanno per me' });
+  await call('POST', '/api/posts', anna, { body: 'Prezzo con il # da solo e email a#b non sono hashtag' });
+
+  const tag = await call('GET', '/api/hashtags/etf/posts', admin);
+  assert.equal(tag.body.posts.length, 1, '#ETFtematici non conta come #ETF');
+  const trending = await call('GET', '/api/hashtags/trending', admin);
+  assert.ok(trending.body.tags.some((t: any) => t.tag === 'lungoperiodo'));
+
+  const search = await call('GET', '/api/search?q=sar', admin);
+  assert.equal(search.body.users[0].username, 'sara');
+  const byTag = await call('GET', '/api/search?q=%23etf', admin);
+  assert.equal(byTag.body.users.length, 0);
+  assert.equal(byTag.body.posts.length, 1);
+  assert.deepEqual(byTag.body.tags.map((t: any) => t.tag).sort(), ['etf', 'etftematici']);
+  assert.equal((await call('GET', '/api/search?q=senza%20fretta', admin)).body.posts.length, 1);
+
+  const saraId = search.body.users[0].id;
+  assert.equal((await call('POST', `/api/admin/users/${saraId}/mentor`, sara, { mentor: true })).status, 403, 'solo amministratori');
+  assert.equal((await call('POST', `/api/admin/users/${saraId}/mentor`, admin, { mentor: true })).status, 200);
+  assert.equal((await call('GET', '/api/users/sara', anna)).body.user.isMentor, true);
+  assert.equal(tag.status, 200);
+  const again = await call('GET', '/api/hashtags/etf/posts', anna);
+  assert.equal(again.body.posts[0].author.isMentor, true);
+  assert.equal((await call('GET', '/api/mentors', anna)).body.users[0].username, 'sara');
+  assert.equal((await call('GET', '/api/admin/users?filter=mentor', admin)).body.users.length, 1);
+  await call('POST', `/api/admin/users/${saraId}/mentor`, admin, { mentor: false });
+  assert.equal((await call('GET', '/api/mentors', anna)).body.users.length, 0);
+});
+
+test('inviti: classifica del mese con gli amici attivi', async () => {
+  const code = (await call('GET', '/api/invites', bruno)).body.code ?? (await call('GET', '/api/invites', admin)).body.code;
+  const host = (await call('GET', '/api/invites', admin)).body.code;
+  const tea = (await call('POST', '/api/register', undefined, { ...person('tea'), inviteCode: host })).body.token;
+  await call('POST', '/api/posts', tea, { body: 'Ciao a tutti, sono nuova!' });
+  const inv = await call('GET', '/api/invites', admin);
+  const me = inv.body.leaderboard.find((r: any) => r.isMe);
+  assert.ok(me && me.active >= 1);
+  assert.equal(inv.body.leaderboard[0].rank, 1);
+  assert.ok(code);
+});

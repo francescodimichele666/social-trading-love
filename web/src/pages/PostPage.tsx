@@ -3,12 +3,14 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { api, timeAgo, type Post } from '../api';
 import PostCard from '../components/PostCard';
 import Avatar from '../components/Avatar';
+import RichText from '../components/RichText';
+import MentorBadge from '../components/MentorBadge';
 import Icon from '../components/Icon';
 import ReportButton from '../components/ReportButton';
 import RemoveButton from '../components/RemoveButton';
 import { useAuth } from '../auth';
 
-type Comment = { id: number; body: string; inReview: boolean; createdAt: string; author: { id: number; username: string; displayName: string; avatarUrl: string | null; isOwner?: boolean } };
+type Comment = { id: number; body: string; inReview: boolean; createdAt: string; author: { id: number; username: string; displayName: string; avatarUrl: string | null; isOwner?: boolean; isMentor?: boolean } };
 
 export default function PostPage() {
   const { id } = useParams();
@@ -57,8 +59,8 @@ export default function PostPage() {
           <div key={c.id} className="comment">
             <Link to={`/u/${c.author.username}`}><Avatar user={c.author} size={30} /></Link>
             <div>
-              <small><strong>{c.author.displayName}</strong> · {timeAgo(c.createdAt)} {c.inReview && <span className="pill warn">In revisione</span>}</small>
-              <p>{c.body}</p>
+              <small><strong>{c.author.displayName}</strong>{c.author.isMentor && <MentorBadge />} · {timeAgo(c.createdAt)} {c.inReview && <span className="pill warn">In revisione</span>}</small>
+              <RichText text={c.body} />
               {me?.id === c.author.id
                 ? <button className="link-btn muted" onClick={() => remove(c.id)}>Elimina</button>
                 : <span className="comment-tools">
