@@ -30,6 +30,8 @@ services:
       # Con LiveKit Cloud (quando le porte del router non si aprono) basta scrivere LIVEKIT_CLOUD_URL nel file .env.
       LIVEKIT_URL: ${LIVEKIT_CLOUD_URL:-ws://livekit:7880}
       LIVEKIT_PUBLIC_URL: ${LIVEKIT_CLOUD_URL:-wss://${LIVE_DOMAIN}}
+      # Codice di prova per iscriversi finché la casella email non è impostata. Cambialo nel .env.
+      ACCESS_TEST_CODE: ${ACCESS_TEST_CODE:-123456}
       LIVEKIT_API_KEY: ${LIVEKIT_API_KEY}
       LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET}
       PUBLIC_URL: https://${DOMAIN}

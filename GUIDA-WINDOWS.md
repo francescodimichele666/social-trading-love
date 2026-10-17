@@ -114,7 +114,7 @@ Se non usi git: scarica di nuovo lo ZIP ed estrailo **sopra** la cartella `C:\so
 
 ## Sicurezza degli accessi
 
-- **Codice via email all'iscrizione:** chi si iscrive riceve un codice di 6 cifre dalla tua casella (passo 8) e deve scriverlo per entrare. Finché l'email di invio non è impostata, il codice non viene chiesto, altrimenti nessuno potrebbe iscriversi. Gli utenti già iscritti valgono come confermati.
+- **Codice via email all'iscrizione:** chi si iscrive riceve un codice di 6 cifre dalla tua casella (passo 8) e deve scriverlo per entrare. Finché l'email di invio non è impostata, serve il **codice di prova** scritto nel file `.env` alla riga `ACCESS_TEST_CODE` (se non c'è, vale `123456`): cambialo con un numero tuo e dallo solo a chi vuoi far entrare. Gli utenti già iscritti valgono come confermati.
 - **Verifica in due passaggi:** ognuno la attiva da **Profilo**, ingranaggio, **Sicurezza**, con un'app gratuita come Google Authenticator. Attivala per prima sul tuo account di proprietario e conserva i codici di riserva.
 - **Pannello utenti:** nella Home tocca l'icona del pannello in alto (la vedono solo gli amministratori), poi **Tutti gli utenti**. Cerchi chiunque per nome o email e puoi confermare l'email, mandare il link per una nuova password, chiudere tutti i suoi accessi, togliere la verifica in due passaggi se ha perso il telefono, sospendere o riattivare. Gli amministratori li gestisci solo tu.
 

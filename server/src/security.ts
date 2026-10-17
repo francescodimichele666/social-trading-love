@@ -1,3 +1,4 @@
+import { config } from './config.js';
 import { createHash, createHmac, randomBytes, randomInt, timingSafeEqual } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
 import { one, query } from './db.js';
@@ -103,14 +104,18 @@ export async function checkSecondFactor(userId: number, code: string) {
 
 // ---------- Codice via email per confermare l'indirizzo ----------
 
-export const emailVerificationActive = async () => process.env.MAIL_TEST === '1' || (await mailConfigured());
+// Codice di prova: vale solo se la casella email non è ancora impostata (e mai nei test automatici).
+export const testCodeMode = async () => Boolean(config.testAccessCode) && process.env.MAIL_TEST !== '1' && !(await mailConfigured());
+export const emailVerificationActive = async () => process.env.MAIL_TEST === '1' || (await mailConfigured()) || (await testCodeMode());
 
 export async function sendVerificationCode(user: { id: number; email: string; display_name: string }) {
   const recent = await one(`SELECT 1 FROM email_codes WHERE user_id = $1 AND purpose = 'verify' AND created_at > now() - interval '45 seconds'`, [user.id]);
   if (recent) throw new HttpError(429, 'Ti abbiamo appena mandato un codice: aspetta un minuto prima di chiederne un altro');
-  const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
+  const testMode = await testCodeMode();
+  const code = testMode ? config.testAccessCode : String(randomInt(0, 1_000_000)).padStart(6, '0');
   await query(`UPDATE email_codes SET used_at = now() WHERE user_id = $1 AND purpose = 'verify' AND used_at IS NULL`, [user.id]);
   await query(`INSERT INTO email_codes (user_id, purpose, code_hash, expires_at) VALUES ($1, 'verify', $2, now() + interval '15 minutes')`, [user.id, sha256(code)]);
+  if (testMode) return;
   await sendMail({
     to: user.email,
     subject: `${code} è il tuo codice per Love Trading Club`,

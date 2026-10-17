@@ -678,3 +678,25 @@ test('pannello utenti: elenco, ricerca, gestione e limiti', async () => {
   const owner = (await raw('GET', '/api/admin/users?q=francesco', admin)).body.users[0];
   assert.equal((await raw('POST', `/api/admin/users/${owner.id}/suspend`, admin, { statement: 'prova sul proprietario' })).status, 403);
 });
+
+test('codice di prova per iscriversi finché la casella email non è impostata', async () => {
+  const { config } = await import('../src/config.js');
+  const saved = (await pool.query(`SELECT value FROM settings WHERE key = 'mail'`)).rows[0]?.value;
+  await pool.query(`DELETE FROM settings WHERE key = 'mail'`);
+  process.env.MAIL_TEST = '0';
+  config.testAccessCode = '424242';
+  try {
+    const before = sentMails.length;
+    const res = await raw('POST', '/api/register', undefined, person('prova'));
+    assert.equal(res.body.verify, true);
+    assert.equal(res.body.testCode, true);
+    assert.equal(sentMails.length, before, 'nessuna email parte');
+    assert.equal((await raw('POST', '/api/verify-email', undefined, { ticket: res.body.ticket, code: '111111' })).status, 400);
+    const ok = await raw('POST', '/api/verify-email', undefined, { ticket: res.body.ticket, code: '424242' });
+    assert.ok(ok.body.token);
+  } finally {
+    process.env.MAIL_TEST = '1';
+    config.testAccessCode = '';
+    if (saved) await pool.query(`INSERT INTO settings (key, value) VALUES ('mail', $1)`, [saved]);
+  }
+});

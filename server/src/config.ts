@@ -23,6 +23,9 @@ export const config = {
   livekitApiSecret: process.env.LIVEKIT_API_SECRET ?? 'devsecret-cambiami-con-almeno-32-caratteri',
   // false nei test o se LiveKit non è ancora installato: i permessi si aggiornano al prossimo ingresso.
   livekitSync: process.env.LIVEKIT_SYNC !== 'false',
+  // Codice di prova per l'iscrizione finché la casella email non è impostata (vuoto = nessun codice).
+  // Appena imposti l'email di invio, arrivano i codici veri e questo smette di valere.
+  testAccessCode: (process.env.ACCESS_TEST_CODE ?? '').trim(),
   // Se impostata, solo questa email può diventare il primo iscritto (il proprietario).
   ownerEmail: (process.env.OWNER_EMAIL ?? '').trim().toLowerCase(),
   // Indirizzo pubblico del sito, usato nei link delle email (es. https://lovetrading.duckdns.org).

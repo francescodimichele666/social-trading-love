@@ -5,11 +5,11 @@ import HeartChart from './HeartChart';
 // Dopo email e password può servire un secondo passaggio:
 // - "verify": il codice di 6 cifre arrivato via email (iscrizione o email non ancora confermata);
 // - "2fa": il codice dell'app di autenticazione, oppure un codice di riserva.
-export type AuthResult = { token?: string; verify?: boolean; twoFactor?: boolean; ticket?: string; email?: string };
-export type Step = { kind: 'verify'; ticket: string; email: string } | { kind: '2fa'; ticket: string };
+export type AuthResult = { token?: string; verify?: boolean; twoFactor?: boolean; ticket?: string; email?: string; testCode?: boolean };
+export type Step = { kind: 'verify'; ticket: string; email: string; testCode?: boolean } | { kind: '2fa'; ticket: string };
 
 export function nextStep(res: AuthResult): Step | null {
-  if (res.verify && res.ticket) return { kind: 'verify', ticket: res.ticket, email: res.email ?? '' };
+  if (res.verify && res.ticket) return { kind: 'verify', ticket: res.ticket, email: res.email ?? '', testCode: res.testCode };
   if (res.twoFactor && res.ticket) return { kind: '2fa', ticket: res.ticket };
   return null;
 }
@@ -51,15 +51,17 @@ export function AuthStepForm({ step, onToken, onStep, onCancel }: { step: Step; 
     <form className="auth" onSubmit={submit}>
       <div className="aurora" aria-hidden="true" />
       <HeartChart size={80} />
-      <h1 className="brand">{isEmail ? 'Controlla la tua email' : 'Verifica in due passaggi'}</h1>
+      <h1 className="brand">{isEmail ? (step.testCode ? 'Codice di accesso' : 'Controlla la tua email') : 'Verifica in due passaggi'}</h1>
       <p className="muted center">
-        {isEmail
+        {isEmail && step.testCode
+          ? <>Il sito è in prova e non manda ancora email: scrivi il <b>codice di prova</b> che ti ha dato chi gestisce la comunità.</>
+          : isEmail
           ? <>Ti abbiamo mandato un codice di 6 cifre a <b>{step.email}</b>. Se non lo vedi, guarda nello spam.</>
           : useRecovery
             ? 'Scrivi uno dei codici di riserva che hai salvato quando hai attivato la verifica in due passaggi.'
             : "Apri l'app di autenticazione sul telefono e scrivi il codice di 6 cifre di Love Trading Club."}
       </p>
-      <label>{isEmail ? 'Codice dalla email' : useRecovery ? 'Codice di riserva' : "Codice dell'app"}
+      <label>{isEmail ? (step.testCode ? 'Codice di prova' : 'Codice dalla email') : useRecovery ? 'Codice di riserva' : "Codice dell'app"}
         <input id="code" className="code-input" value={code} onChange={(e) => setCode(e.target.value)} required autoFocus
           inputMode={useRecovery ? 'text' : 'numeric'} autoComplete="one-time-code" maxLength={useRecovery ? 12 : 7}
           placeholder={useRecovery ? 'abcd-efgh' : '123456'} />
@@ -67,7 +69,9 @@ export function AuthStepForm({ step, onToken, onStep, onCancel }: { step: Step; 
       {info && <p className="notice friendly">{info}</p>}
       {error && <p className="error">{error}</p>}
       <button className="btn big" disabled={busy}>{busy ? 'Controllo…' : 'Conferma'}</button>
-      {isEmail
+      {isEmail && step.testCode
+        ? null
+        : isEmail
         ? <button type="button" className="link-btn" onClick={resend}>Non è arrivato? Mandami un altro codice</button>
         : <button type="button" className="link-btn" onClick={() => { setUseRecovery(!useRecovery); setCode(''); }}>
             {useRecovery ? "Usa il codice dell'app" : 'Non ho il telefono: uso un codice di riserva'}

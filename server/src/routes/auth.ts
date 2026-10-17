@@ -6,7 +6,7 @@ import { HttpError } from '../app.js';
 import { RULES, RULES_VERSION } from '../rules.js';
 import { config } from '../config.js';
 import { TERMS_VERSION } from '../legal.js';
-import { checkSecondFactor, checkVerificationCode, emailVerificationActive, issueSession, readTicket, sendVerificationCode, signTicket } from '../security.js';
+import { checkSecondFactor, checkVerificationCode, emailVerificationActive, issueSession, testCodeMode, readTicket, sendVerificationCode, signTicket } from '../security.js';
 
 const registerSchema = z.object({
   email: z.string().trim().toLowerCase().email(),
@@ -75,7 +75,7 @@ export default async function authRoutes(app: FastifyInstance) {
     reply.status(201);
     if (!user.email_verified_at) {
       await sendVerificationCode(user);
-      return { verify: true, ticket: await signTicket(app, user.id, 'verify'), email: user.email };
+      return { verify: true, ticket: await signTicket(app, user.id, 'verify'), email: user.email, testCode: await testCodeMode() };
     }
     return { token: await issueSession(app, user.id), user: publicUser(user) };
   });
@@ -98,6 +98,7 @@ export default async function authRoutes(app: FastifyInstance) {
     const user = await one('SELECT id, email, display_name, email_verified_at FROM users WHERE id = $1 AND deleted_at IS NULL', [t.id]);
     if (!user || user.email_verified_at) throw new HttpError(400, "L'email è già confermata: entra con email e password");
     await sendVerificationCode(user);
+    if (await testCodeMode()) return { message: 'La casella email non è ancora impostata: usa il codice di prova.' };
     return { message: `Codice nuovo inviato a ${user.email}` };
   });
 
@@ -125,7 +126,7 @@ export default async function authRoutes(app: FastifyInstance) {
     if (user.banned_at) throw new HttpError(403, `Account sospeso: ${user.ban_reason ?? ''}`.trim());
     if (!user.email_verified_at) {
       await sendVerificationCode(user).catch((e) => { if (e.statusCode !== 429) throw e; });
-      return { verify: true, ticket: await signTicket(app, user.id, 'verify'), email: user.email };
+      return { verify: true, ticket: await signTicket(app, user.id, 'verify'), email: user.email, testCode: await testCodeMode() };
     }
     if (user.totp_secret) return { twoFactor: true, ticket: await signTicket(app, user.id, '2fa') };
     return { token: await issueSession(app, user.id), user: publicUser(user) };
