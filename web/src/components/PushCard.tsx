@@ -36,7 +36,7 @@ export default function PushCard({ compact = false }: { compact?: boolean }) {
         <strong>Notifiche sul telefono</strong>
         {support === 'ios-install'
           ? <small>Su iPhone funzionano dall'app installata: in Safari tocca Condividi e poi "Aggiungi alla schermata Home", poi apri l'app da lì.</small>
-          : <small>{on ? 'Attive su questo dispositivo.' : 'Ti avvisiamo quando parte una Piazza o qualcuno ti risponde, anche ad app chiusa.'}</small>}
+          : <small>{on ? 'Attive su questo dispositivo.' : 'Ti avvisiamo quando parte una Live o qualcuno ti risponde, anche ad app chiusa.'}</small>}
         {error && <small className="error">{error}</small>}
       </div>
       {support === 'ok' && (

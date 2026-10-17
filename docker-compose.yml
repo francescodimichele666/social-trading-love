@@ -26,7 +26,9 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       OWNER_EMAIL: ${OWNER_EMAIL:-}
       UPLOAD_DIR: /data/uploads
-      LIVEKIT_URL: wss://${LIVE_DOMAIN}
+      # Il server parla a LiveKit dentro Docker; i telefoni usano l'indirizzo pubblico.
+      LIVEKIT_URL: ws://livekit:7880
+      LIVEKIT_PUBLIC_URL: wss://${LIVE_DOMAIN}
       LIVEKIT_API_KEY: ${LIVEKIT_API_KEY}
       LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET}
       PUBLIC_URL: https://${DOMAIN}

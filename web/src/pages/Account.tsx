@@ -4,6 +4,7 @@ import { api, DEMO, setToken } from '../api';
 import { useAuth } from '../auth';
 import Icon from '../components/Icon';
 import PushCard from '../components/PushCard';
+import TwoFactorCard from '../components/TwoFactorCard';
 
 function ChangePassword() {
   const { login } = useAuth();
@@ -65,7 +66,7 @@ function DeleteAccount() {
       <div className="row"><strong>Elimina il mio account</strong>{!open && <button className="btn danger small" onClick={() => setOpen(true)}>Elimina</button>}</div>
       {open && (
         <div className="stack">
-          <small className="muted">Cancelliamo subito profilo, post, video, commenti e Piazze. Non si può tornare indietro.</small>
+          <small className="muted">Cancelliamo subito profilo, post, video, commenti e Live. Non si può tornare indietro.</small>
           <input type="password" placeholder="Scrivi la tua password per confermare" value={password} onChange={(e) => setPassword(e.target.value)} />
           {error && <p className="error">{error}</p>}
           <div className="row"><button className="btn ghost small" onClick={() => setOpen(false)}>Annulla</button><button className="btn danger small" disabled={!password} onClick={remove}>Elimina per sempre</button></div>
@@ -109,6 +110,7 @@ export default function Account() {
 
       <h2 className="section-title">Sicurezza</h2>
       <ChangePassword />
+      <TwoFactorCard />
 
       <h2 className="section-title">I tuoi dati</h2>
       <div className="card account-item">

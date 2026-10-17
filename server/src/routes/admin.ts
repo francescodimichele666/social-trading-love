@@ -7,6 +7,7 @@ import { closeLiveRoom } from '../livekit.js';
 import { readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { config } from '../config.js';
+import { sendResetLink } from './account.js';
 
 // Data dell'ultimo backup del database fatto dal servizio "backup" (null se non configurato o mai fatto).
 async function lastBackup(): Promise<string | null> {
@@ -90,7 +91,7 @@ export default async function adminRoutes(app: FastifyInstance) {
     return { reinstated: true };
   });
 
-  // Rimuove subito un post, un commento o una Piazza, senza aspettare una segnalazione.
+  // Rimuove subito un post, un commento o una Live, senza aspettare una segnalazione.
   app.post('/admin/remove', async (req) => {
     const body = z.object({ targetType: z.enum(['post', 'comment', 'room']), targetId: z.number().int().positive(), statement }).parse(req.body);
     const table = { post: 'posts', comment: 'comments', room: 'rooms' }[body.targetType];
@@ -109,11 +110,149 @@ export default async function adminRoutes(app: FastifyInstance) {
         [req.user.id, body.targetType, target.id, 'remove', body.statement],
       );
       if (target.owner_id !== req.user.id) {
-        const what = { post: 'un tuo post', comment: 'un tuo commento', room: 'una tua Piazza' }[body.targetType];
+        const what = { post: 'un tuo post', comment: 'un tuo commento', room: 'una tua Live' }[body.targetType];
         await notify(target.owner_id, 'moderation', `Abbiamo rimosso ${what}. Motivo: ${body.statement}`, null, c);
       }
     });
     if (body.targetType === 'room') await closeLiveRoom(target.id);
     return { removed: true };
+  });
+
+  // ---------- Pannello utenti: tutti gli iscritti, con ricerca e filtri ----------
+
+  const USER_FILTERS = {
+    all: 'TRUE',
+    staff: "u.role <> 'member'",
+    suspended: 'u.banned_at IS NOT NULL',
+    unverified: 'u.email_verified_at IS NULL',
+    twofactor: 'u.totp_secret IS NOT NULL',
+    new: "u.created_at > now() - interval '7 days'",
+  } as const;
+
+  const serializeAdminUser = (u: any) => ({
+    id: Number(u.id), username: u.username, displayName: u.display_name, email: u.email, avatarUrl: u.avatar_url,
+    role: u.role, isOwner: u.is_owner, createdAt: u.created_at, lastLoginAt: u.last_login_at,
+    emailVerified: Boolean(u.email_verified_at), twoFactor: Boolean(u.totp_secret),
+    suspended: Boolean(u.banned_at), suspendedAt: u.banned_at, suspendReason: u.ban_reason,
+    posts: u.posts ?? 0, invitedBy: u.invited_by_username ?? null,
+  });
+
+  app.get('/admin/users', async (req) => {
+    const q = z.object({
+      q: z.string().trim().max(100).default(''),
+      filter: z.enum(Object.keys(USER_FILTERS) as [keyof typeof USER_FILTERS]).default('all'),
+      page: z.coerce.number().int().min(0).default(0),
+    }).parse(req.query);
+    const where = `u.deleted_at IS NULL AND ${USER_FILTERS[q.filter]} AND ($1 = '' OR u.username ILIKE '%' || $1 || '%' OR u.display_name ILIKE '%' || $1 || '%' OR u.email ILIKE '%' || $1 || '%')`;
+    const PAGE = 50;
+    const { rows } = await query(
+      `SELECT u.*, i.username AS invited_by_username,
+              (SELECT count(*)::int FROM posts p WHERE p.author_id = u.id AND p.removed_at IS NULL) AS posts
+       FROM users u LEFT JOIN users i ON i.id = u.invited_by
+       WHERE ${where} ORDER BY u.is_owner DESC, u.created_at DESC LIMIT ${PAGE + 1} OFFSET $2`,
+      [q.q, q.page * PAGE],
+    );
+    const counts = await one(
+      `SELECT ${Object.entries(USER_FILTERS).map(([k, v]) => `count(*) FILTER (WHERE ${v})::int AS ${k}`).join(', ')} FROM users u WHERE u.deleted_at IS NULL`,
+    );
+    return { users: rows.slice(0, PAGE).map(serializeAdminUser), nextPage: rows.length > PAGE ? q.page + 1 : null, counts };
+  });
+
+  app.get<{ Params: { id: string } }>('/admin/users/:id', async (req) => {
+    const u = await one(
+      `SELECT u.*, i.username AS invited_by_username,
+              (SELECT count(*)::int FROM posts p WHERE p.author_id = u.id AND p.removed_at IS NULL) AS posts
+       FROM users u LEFT JOIN users i ON i.id = u.invited_by WHERE u.id = $1 AND u.deleted_at IS NULL`, [Number(req.params.id)]);
+    if (!u) throw new HttpError(404, 'Utente non trovato');
+    const extra = await one(
+      `SELECT (SELECT count(*)::int FROM comments WHERE author_id = $1 AND removed_at IS NULL) AS comments,
+              (SELECT count(*)::int FROM follows WHERE followed_id = $1) AS followers,
+              (SELECT count(*)::int FROM users WHERE invited_by = $1 AND deleted_at IS NULL) AS invited,
+              (SELECT count(*)::int FROM trades WHERE user_id = $1) AS trades,
+              (SELECT count(*)::int FROM rooms WHERE host_id = $1) AS rooms,
+              (SELECT count(*)::int FROM reports WHERE target_type = 'user' AND target_id = $1) AS reports`, [u.id]);
+    const { rows: history } = await query(
+      `SELECT a.action, a.statement, a.created_at, m.username AS by
+       FROM moderation_actions a LEFT JOIN users m ON m.id = a.moderator_id
+       WHERE a.target_type = 'user' AND a.target_id = $1 ORDER BY a.created_at DESC LIMIT 20`, [u.id]);
+    return {
+      user: { ...serializeAdminUser(u), birthDate: u.birth_date, ...extra },
+      history: history.map((h) => ({ action: h.action, statement: h.statement, createdAt: h.created_at, by: h.by })),
+      canManage: canManage(req.user, u),
+    };
+  });
+
+  // Il proprietario non si tocca; moderatori e amministratori li gestisce solo il proprietario.
+  function canManage(me: { id: number; isOwner: boolean }, target: any) {
+    if (target.is_owner || Number(target.id) === me.id) return false;
+    return target.role === 'member' || me.isOwner;
+  }
+
+  async function manageable(req: any) {
+    const target = await one('SELECT * FROM users WHERE id = $1 AND deleted_at IS NULL', [Number(req.params.id)]);
+    if (!target) throw new HttpError(404, 'Utente non trovato');
+    if (target.is_owner) throw new HttpError(403, 'Il proprietario non si può modificare da qui');
+    if (Number(target.id) === req.user.id) throw new HttpError(400, 'Per il tuo account usa la pagina Account');
+    if (target.role !== 'member' && !req.user.isOwner) throw new HttpError(403, 'Moderatori e amministratori li gestisce solo il proprietario');
+    return target;
+  }
+
+  const log = (c: any, by: number, target: number, action: string, text: string) =>
+    c.query(`INSERT INTO moderation_actions (moderator_id, target_type, target_id, action, statement) VALUES ($1, 'user', $2, $3, $4)`, [by, target, action, text]);
+
+  app.post<{ Params: { id: string } }>('/admin/users/:id/suspend', async (req) => {
+    const body = z.object({ statement }).parse(req.body);
+    const target = await manageable(req);
+    if (target.banned_at) throw new HttpError(400, 'Questo account è già sospeso');
+    await tx(async (c) => {
+      await c.query('UPDATE users SET banned_at = now(), ban_reason = $2 WHERE id = $1', [target.id, body.statement]);
+      await log(c, req.user.id, target.id, 'ban', body.statement);
+    });
+    // Chiude le sue Live in corso.
+    const { rows } = await query(`SELECT id FROM rooms WHERE host_id = $1 AND status = 'live'`, [target.id]);
+    for (const r of rows) {
+      await query(`UPDATE rooms SET status = 'ended', ended_at = now() WHERE id = $1`, [r.id]);
+      await closeLiveRoom(r.id);
+    }
+    return { suspended: true };
+  });
+
+  app.post<{ Params: { id: string } }>('/admin/users/:id/logout', async (req) => {
+    const target = await manageable(req);
+    await tx(async (c) => {
+      await c.query('UPDATE users SET sessions_revoked_at = now() WHERE id = $1', [target.id]);
+      await log(c, req.user.id, target.id, 'logout', 'Chiusi tutti gli accessi aperti');
+    });
+    return { done: true, message: `${target.display_name} dovrà rientrare con email e password su tutti i dispositivi.` };
+  });
+
+  // Per chi ha perso il telefono con l'app dei codici e anche i codici di riserva.
+  app.post<{ Params: { id: string } }>('/admin/users/:id/reset-2fa', async (req) => {
+    const body = z.object({ statement }).parse(req.body);
+    const target = await manageable(req);
+    if (!target.totp_secret) throw new HttpError(400, 'Questo account non ha i due fattori attivi');
+    await tx(async (c) => {
+      await c.query('UPDATE users SET totp_secret = NULL, totp_pending = NULL, totp_enabled_at = NULL, totp_last_step = NULL WHERE id = $1', [target.id]);
+      await c.query('DELETE FROM recovery_codes WHERE user_id = $1', [target.id]);
+      await log(c, req.user.id, target.id, 'reset_2fa', body.statement);
+      await notify(target.id, 'moderation', "Un amministratore ha disattivato l'accesso a due fattori del tuo account. Se vuoi, riattivalo da Account.", '/account', c);
+    });
+    return { done: true };
+  });
+
+  app.post<{ Params: { id: string } }>('/admin/users/:id/verify-email', async (req) => {
+    const target = await manageable(req);
+    if (target.email_verified_at) throw new HttpError(400, "L'email è già confermata");
+    await tx(async (c) => {
+      await c.query('UPDATE users SET email_verified_at = now() WHERE id = $1', [target.id]);
+      await log(c, req.user.id, target.id, 'verify_email', 'Email confermata a mano da un amministratore');
+    });
+    return { done: true };
+  });
+
+  app.post<{ Params: { id: string } }>('/admin/users/:id/password-reset', async (req) => {
+    const target = await manageable(req);
+    await sendResetLink(req, target);
+    return { done: true, message: `Link per una nuova password inviato a ${target.email}` };
   });
 }

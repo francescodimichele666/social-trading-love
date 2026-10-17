@@ -111,7 +111,7 @@ export default async function moderationRoutes(app: FastifyInstance) {
         [req.user.id, report.id, report.target_type, report.target_id, action, statement],
       );
       if (action !== 'dismiss') {
-        const what = { post: 'un tuo post', comment: 'un tuo commento', room: 'una tua Piazza', user: 'il tuo profilo' }[report.target_type as 'post'];
+        const what = { post: 'un tuo post', comment: 'un tuo commento', room: 'una tua Live', user: 'il tuo profilo' }[report.target_type as 'post'];
         const msg = action === 'ban'
           ? `Il tuo account è stato sospeso. Motivo: ${statement}`
           : `Abbiamo rimosso ${what}. Motivo: ${statement}`;

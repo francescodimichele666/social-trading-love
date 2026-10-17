@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../auth';
 import HeartChart from '../components/HeartChart';
+import { AuthStepForm, nextStep, type Step } from '../components/AuthSteps';
 
 export default function Login() {
   const { login } = useAuth();
@@ -11,6 +12,7 @@ export default function Login() {
   const [form, setForm] = useState({ login: '', password: '' });
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [step, setStep] = useState<Step | null>(null);
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -18,6 +20,8 @@ export default function Login() {
     setError('');
     try {
       const res = await api('/login', { body: form });
+      const next = nextStep(res);
+      if (next) { setStep(next); return; }
       await login(res.token);
       navigate(params.get('dopo') ?? '/', { replace: true });
     } catch (err: any) {
@@ -26,6 +30,11 @@ export default function Login() {
       setBusy(false);
     }
   };
+
+  if (step) {
+    return <AuthStepForm step={step} onStep={setStep} onCancel={() => { setStep(null); setForm({ ...form, password: '' }); }}
+      onToken={async (token) => { await login(token); navigate(params.get('dopo') ?? '/', { replace: true }); }} />;
+  }
 
   return (
     <form className="auth" onSubmit={submit}>

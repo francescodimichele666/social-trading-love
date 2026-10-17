@@ -1,5 +1,5 @@
 import { lazy, Suspense, useState } from 'react';
-import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { NavLink, Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom';
 import { useAuth } from './auth';
 import { DEMO } from './api';
 import Icon from './components/Icon';
@@ -16,6 +16,7 @@ import Notifications from './pages/Notifications';
 import Moderation from './pages/Moderation';
 import Admin from './pages/Admin';
 import Account from './pages/Account';
+import AdminUsers from './pages/AdminUsers';
 import OwnerSettings from './pages/OwnerSettings';
 import { Privacy, Terms } from './pages/Legal';
 import { ForgotPassword, ResetPassword } from './pages/Password';
@@ -23,8 +24,13 @@ import Rules from './pages/Rules';
 import Journal from './pages/Journal';
 import ChallengePage from './pages/ChallengePage';
 
-// La parte video (LiveKit) è pesante: si scarica solo quando si entra in una Piazza.
+// La parte video (LiveKit) è pesante: si scarica solo quando si entra in una Live.
 const RoomPage = lazy(() => import('./pages/RoomPage'));
+
+function OldRoomLink() {
+  const { id } = useParams();
+  return <Navigate to={`/live/${id}`} replace />;
+}
 
 export default function App() {
   const { me, loading, unread } = useAuth();
@@ -54,7 +60,7 @@ export default function App() {
     );
   }
 
-  const inRoom = /^\/piazze\/\d+/.test(location.pathname);
+  const inRoom = /^\/live\/\d+/.test(location.pathname);
   return (
     <div className={`app ${inRoom ? 'app-room' : ''}`}>
       {banner}
@@ -63,14 +69,18 @@ export default function App() {
           <Route path="/" element={<Feed onCompose={() => setCreating(true)} />} />
           <Route path="/post/:id" element={<PostPage />} />
           <Route path="/u/:username" element={<Profile />} />
-          <Route path="/piazze" element={<Rooms />} />
-          <Route path="/piazze/:id" element={<Suspense fallback={<div className="spinner" />}><RoomPage /></Suspense>} />
+          <Route path="/live" element={<Rooms />} />
+          {/* Le "Piazze" ora si chiamano "Live": i vecchi link continuano a funzionare. */}
+          <Route path="/piazze" element={<Navigate to="/live" replace />} />
+          <Route path="/piazze/:id" element={<OldRoomLink />} />
+          <Route path="/live/:id" element={<Suspense fallback={<div className="spinner" />}><RoomPage /></Suspense>} />
           <Route path="/inviti" element={<Invites />} />
           <Route path="/diario" element={<Journal />} />
           <Route path="/sfida" element={<ChallengePage />} />
           <Route path="/notifiche" element={<Notifications />} />
           <Route path="/moderazione" element={me.role === 'member' ? <Navigate to="/" /> : <Moderation />} />
           <Route path="/admin" element={me.role === 'admin' ? <Admin /> : <Navigate to="/" />} />
+          <Route path="/admin/utenti" element={me.role === 'admin' ? <AdminUsers /> : <Navigate to="/" />} />
           <Route path="/regole" element={<Rules />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/condizioni" element={<Terms />} />
@@ -83,7 +93,7 @@ export default function App() {
       {!inRoom && (
         <nav className="tabbar" aria-label="Menu principale">
           <NavLink to="/" end><Icon name="home" /><span>Home</span></NavLink>
-          <NavLink to="/piazze"><Icon name="live" /><span>Piazze</span></NavLink>
+          <NavLink to="/live"><Icon name="live" /><span>Live</span></NavLink>
           <button className="tab-create" onClick={() => setCreating(true)} aria-label="Crea"><Icon name="plus" size={26} /></button>
           <NavLink to="/notifiche"><Icon name="bell" /><span>Avvisi</span>{unread > 0 && <b className="badge">{unread}</b>}</NavLink>
           <NavLink to={`/u/${me.username}`}><Icon name="user" /><span>Profilo</span></NavLink>

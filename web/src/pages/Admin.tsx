@@ -116,6 +116,13 @@ export default function Admin() {
               <Icon name="flag" /> <span><strong>{stats.openReports} {stats.openReports === 1 ? 'segnalazione aperta' : 'segnalazioni aperte'}</strong><small>Tocca per decidere</small></span>
             </Link>
           )}
+          <div className="admin-links">
+            <Link to="/admin/utenti" className="card account-item link-card">
+              <span className="create-ico teal"><Icon name="users" size={20} /></span>
+              <span><strong>Tutti gli utenti</strong><small>Cerca, guarda i dettagli, cambia ruolo, sospendi, chiudi gli accessi</small></span>
+              <Icon name="back" className="chev" size={18} />
+            </Link>
+          </div>
           <BackupStatus at={stats.lastBackup} />
           <h2 className="section-title">Persone</h2>
           <div className="tiles">
@@ -130,7 +137,7 @@ export default function Admin() {
             <Tile label="Post" value={stats.posts} hint={`+${stats.posts7d} in 7 giorni`} tone="teal" />
             <Tile label="Video" value={stats.videos} tone="violet" />
             <Tile label="Commenti" value={stats.comments} />
-            <Tile label="Piazze live ora" value={stats.liveRooms} hint={`${stats.rooms7d} create in 7 giorni`} tone="coral" />
+            <Tile label="Live in corso" value={stats.liveRooms} hint={`${stats.rooms7d} create in 7 giorni`} tone="coral" />
           </div>
         </>
       )}

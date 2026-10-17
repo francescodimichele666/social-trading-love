@@ -108,9 +108,9 @@ export default function CreateSheet({ open, onClose, startWith = 'menu' }: { ope
               <span className="create-ico violet"><Icon name="trend" /></span>
               <span><strong>Operazione nel diario</strong><small>Ingresso, stop e rischio: poi decidi se condividerla</small></span>
             </button>
-            <button className="create-option" onClick={() => { close(); navigate('/piazze?nuova=1'); }}>
+            <button className="create-option" onClick={() => { close(); navigate('/live?nuova=1'); }}>
               <span className="create-ico coral"><Icon name="live" /></span>
-              <span><strong>Apri una Piazza</strong><small>Vai in diretta e fai salire chi vuole parlare</small></span>
+              <span><strong>Apri una Live</strong><small>Vai in diretta e fai salire chi vuole parlare</small></span>
             </button>
           </>
         ) : (

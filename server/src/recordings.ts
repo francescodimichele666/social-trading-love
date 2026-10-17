@@ -3,8 +3,8 @@ import { one, query } from './db.js';
 import { config } from './config.js';
 import { roomName } from './livekit.js';
 
-// Registrazione delle Piazze con LiveKit Egress: un servizio a parte (docker-compose) che "guarda"
-// la Piazza come uno spettatore e salva un video MP4 con tutte le persone sul palco, a griglia.
+// Registrazione delle Live con LiveKit Egress: un servizio a parte (docker-compose) che "guarda"
+// la Live come uno spettatore e salva un video MP4 con tutte le persone sul palco, a griglia.
 // I file finiscono nella cartella condivisa "recordings" e il server li mostra in /recordings/.
 
 const http = () => config.livekitUrl.replace(/^ws/, 'http');

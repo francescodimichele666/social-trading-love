@@ -8,10 +8,11 @@ import RecordingItem from '../components/RecordingItem';
 import Avatar from '../components/Avatar';
 import Icon from '../components/Icon';
 import ReportButton from '../components/ReportButton';
+import LivePanel from '../components/LivePanel';
 import { useAuth } from '../auth';
 
 type Person = { id: number; username: string; displayName: string; avatarUrl: string | null; role: string };
-type Info = { room: Room; stage: Person[]; raisedHands: Person[]; me: { role: string | null; handRaised: boolean; isHost: boolean }; maxOnStage: number; recordings?: Recording[] };
+type Info = { room: Room; stage: Person[]; raisedHands: Person[]; me: { role: string | null; handRaised: boolean; isHost: boolean; removed?: 'kicked' | 'blocked' | null }; maxOnStage: number; recordings?: Recording[] };
 type Conn = { token: string; livekitUrl: string; role: string };
 
 // Mostra solo chi è sul palco (chi può trasmettere), non tutto il pubblico.
@@ -74,9 +75,10 @@ export default function RoomPage() {
     return () => clearInterval(t);
   }, [load]);
 
-  // Entra appena la Piazza è in diretta; se il ruolo cambia (sali o scendi dal palco) prende un nuovo biglietto.
+  // Entra appena la Live è in diretta; se il ruolo cambia (sali o scendi dal palco) prende un nuovo biglietto.
   useEffect(() => {
     if (!info || info.room.status !== 'live') return;
+    if (info.me.removed) { if (conn) setConn(null); return; }
     if (!conn || (info.me.role && info.me.role !== conn.role)) join();
   }, [info, conn, join]);
 
@@ -91,16 +93,16 @@ export default function RoomPage() {
 
   const leave = async () => {
     if (!info?.me.isHost) await api(`/rooms/${id}/leave`, { method: 'POST' }).catch(() => {});
-    navigate('/piazze');
+    navigate('/live');
   };
 
   const end = async () => {
-    if (!confirm('Chiudere la Piazza per tutti?')) return;
+    if (!confirm('Chiudere la Live per tutti?')) return;
     await act(`/rooms/${id}/end`);
-    navigate('/piazze');
+    navigate('/live');
   };
 
-  if (error && !info) return <div className="page"><p className="error">{error}</p><button className="btn" onClick={() => navigate('/piazze')}>Torna alle Piazze</button></div>;
+  if (error && !info) return <div className="page"><p className="error">{error}</p><button className="btn" onClick={() => navigate('/live')}>Torna alle Live</button></div>;
   if (!info) return <div className="center-screen"><div className="spinner" /></div>;
 
   const { room, me } = info;
@@ -114,25 +116,33 @@ export default function RoomPage() {
           <strong>{room.title}</strong>
           <small>{room.status === 'live' ? `● In diretta · ${room.listeners} presenti` : room.status === 'ended' ? 'Finita' : 'Non ancora iniziata'}</small>
         </div>
-        {room.record && room.status === 'live' && <span className="pill rec" title="Questa Piazza viene registrata">● REC</span>}
+        {room.record && room.status === 'live' && <span className="pill rec" title="Questa Live viene registrata">● REC</span>}
         {!me.isHost && <ReportButton targetType="room" targetId={room.id} />}
       </header>
 
       {error && <p className="error" onClick={() => setError('')}>{error}</p>}
       {room.record && room.status !== 'ended' && (
-        <p className="notice rec-notice">Questa Piazza {room.status === 'live' ? 'viene registrata' : 'sarà registrata'}: se sali sul palco, la tua voce e la tua immagine finiscono nel video. Chi ascolta soltanto non compare.</p>
+        <p className="notice rec-notice">Questa Live {room.status === 'live' ? 'viene registrata' : 'sarà registrata'}: se sali sul palco, la tua voce e la tua immagine finiscono nel video. Chi ascolta soltanto non compare.</p>
+      )}
+
+      {me.removed && room.status === 'live' && (
+        <div className="the-end">
+          <strong>{me.removed === 'blocked' ? 'Chi conduce ti ha bloccato' : 'Chi conduce ti ha fatto uscire'}</strong>
+          <p>{me.removed === 'blocked' ? 'Non puoi entrare nelle sue Live.' : 'Non puoi rientrare in questa diretta.'} Se pensi sia un errore, scrivi a un amministratore.</p>
+          <button className="btn" onClick={() => navigate('/live')}>Torna alle Live</button>
+        </div>
       )}
 
       {room.status === 'scheduled' && (
         <div className="the-end">
-          <strong>{me.isHost ? 'Quando sei pronto, vai in diretta' : 'La Piazza inizierà presto'}</strong>
+          <strong>{me.isHost ? 'Quando sei pronto, vai in diretta' : 'La Live inizierà presto'}</strong>
           <p>{new Date(room.scheduledAt).toLocaleString('it-IT')}</p>
           {me.isHost && <button className="btn big" onClick={() => act(`/rooms/${id}/start`)}>Vai in diretta</button>}
         </div>
       )}
       {room.status === 'ended' && (
         <div className="the-end">
-          <strong>Questa Piazza è finita</strong>
+          <strong>Questa Live è finita</strong>
           {(info.recordings?.length ?? 0) > 0 && <p>Puoi rivederla qui sotto.</p>}
         </div>
       )}
@@ -147,7 +157,9 @@ export default function RoomPage() {
 
       {room.status === 'live' && conn?.token === 'demo' && <DemoStage stage={info.stage} />}
       {room.status === 'live' && conn && conn.token !== 'demo' && (
-        <LiveKitRoom key={conn.token} serverUrl={conn.livekitUrl} token={conn.token} connect video={canPublish} audio={canPublish} className="lk-room" data-lk-theme="default">
+        <LiveKitRoom key={conn.token} serverUrl={conn.livekitUrl} token={conn.token} connect video={canPublish} audio={canPublish} className="lk-room" data-lk-theme="default"
+          onError={(e) => setError(`Il video non si collega (${e.message}). Prova con i dati del telefono invece del Wi-Fi di casa: se così funziona, il problema è solo il router di casa.`)}
+          onMediaDeviceFailure={() => setError('Il telefono non ha dato il permesso per fotocamera o microfono. Consentili nelle impostazioni del browser per questo sito e rientra.')}>
           <div className="room-main">
             <Stage />
             {showChat && <div className="room-chat"><Chat /></div>}
@@ -157,36 +169,18 @@ export default function RoomPage() {
         </LiveKitRoom>
       )}
 
-      {room.status === 'live' && (
+      {room.status === 'live' && !me.removed && (
         <footer className="room-actions">
           {conn?.token !== 'demo' && <button className="btn ghost" onClick={() => setShowChat(!showChat)}>{showChat ? 'Nascondi chat' : <><Icon name="chat" size={18} /> Chat</>}</button>}
           {me.role === 'audience' && (me.handRaised
             ? <button className="btn ghost" onClick={() => act(`/rooms/${id}/hand`, 'DELETE')}>Abbassa la mano</button>
             : <button className="btn" onClick={() => act(`/rooms/${id}/hand`)}><Icon name="hand" size={18} /> Alza la mano</button>)}
           {me.role === 'speaker' && <button className="btn ghost" onClick={() => act(`/rooms/${id}/speakers/${myId}`, 'DELETE')}>Scendi dal palco</button>}
-          {me.isHost && <button className="btn danger" onClick={end}>Chiudi Piazza</button>}
+          {me.isHost && <button className="btn danger" onClick={end}>Chiudi Live</button>}
         </footer>
       )}
 
-      {me.isHost && room.status === 'live' && (
-        <section className="host-panel">
-          <h3>Sul palco ({info.stage.length}/{info.maxOnStage})</h3>
-          {info.stage.map((p) => (
-            <div key={p.id} className="person">
-              <Avatar user={p} size={30} /> <span>{p.displayName}{p.role === 'host' && ' (tu)'}</span>
-              {p.role === 'speaker' && <button className="link-btn" onClick={() => act(`/rooms/${id}/speakers/${p.id}`, 'DELETE')}>Fai scendere</button>}
-            </div>
-          ))}
-          <h3>Mani alzate</h3>
-          {info.raisedHands.length === 0 && <p className="muted small">Nessuna per ora.</p>}
-          {info.raisedHands.map((p) => (
-            <div key={p.id} className="person">
-              <Avatar user={p} size={30} /> <span>{p.displayName}</span>
-              <button className="btn small" disabled={info.stage.length >= info.maxOnStage} onClick={() => act(`/rooms/${id}/speakers/${p.id}`)}>Fai salire</button>
-            </div>
-          ))}
-        </section>
-      )}
+      {me.isHost && room.status === 'live' && <LivePanel roomId={room.id} maxOnStage={info.maxOnStage} onChange={load} />}
     </div>
   );
 }

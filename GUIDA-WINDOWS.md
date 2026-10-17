@@ -25,7 +25,7 @@ Con un IP pubblico che cambia ogni tanto va bene lo stesso: ci pensa DuckDNS ad 
 2. Nel campo "sub domain" scrivi un nome (es. `tradinglove`) e premi **add domain**.
 3. Copia il **token** che vedi in alto nella pagina: ti servirà al passo 6.
 
-Il tuo social sarà su `https://tradinglove.duckdns.org` e il video delle Piazze su `live.tradinglove.duckdns.org` (funziona da solo, non devi crearlo).
+Il tuo social sarà su `https://tradinglove.duckdns.org` e il video delle Live su `live.tradinglove.duckdns.org` (funziona da solo, non devi crearlo).
 
 Se in futuro vuoi un nome più bello (es. `tradinglove.it`), si compra il dominio e si cambia una riga: nessun problema.
 
@@ -42,8 +42,8 @@ Nel router cerca "Port forwarding", "Inoltro porte" o "Virtual server" e crea qu
 | --- | --- | --- |
 | 80 | TCP | Certificato di sicurezza (HTTPS) |
 | 443 | TCP | Il sito |
-| 7881 | TCP | Video delle Piazze (riserva) |
-| 50000-50100 | UDP | Video delle Piazze |
+| 7881 | TCP | Video delle Live (riserva) |
+| 50000-50100 | UDP | Video delle Live |
 
 ## Passo 5. Installa Docker Desktop
 
@@ -80,20 +80,43 @@ Come proprietario sei l'unico che può nominare o togliere amministratori. Per f
 | --- | --- |
 | Il sito non si apre dal telefono | Controlla il passo 1 (CGNAT) e il passo 4 (porte). Prova con i dati mobili, non con il wifi di casa |
 | Il browser dice "connessione non sicura" | Il certificato non è ancora arrivato: aspetta 2-3 minuti. Se resta, la porta 80 non è aperta |
-| Il sito si apre ma le Piazze non mostrano il video | Mancano le porte 7881 e 50000-50100 (passo 4 e firewall). Scrivi a Claude: si sistema |
+| Il sito si apre ma le Live non mostrano il video | Vedi qui sotto **Se la Live non si collega** |
 | Dal wifi di casa non funziona, con i dati sì | Il router non supporta il "NAT loopback". Non è un problema per gli altri utenti |
 | Ho spento il PC | Riaccendilo: Docker riparte da solo e il social torna online |
 
 Per vedere cosa succede, in PowerShell dentro la cartella: `docker compose logs -f` (esci con Ctrl+C).
 
+### Se la Live non si collega
+
+Quando sali sul palco e il video non parte, ora l'app scrive il motivo in rosso. Prova in quest'ordine:
+
+1. **Prova dal telefono con i dati mobili** (Wi-Fi spento). Molti router di casa non fanno rientrare il video verso il PC dalla stessa rete: se con i dati funziona, il social va bene e gli altri utenti non hanno problemi.
+2. **Controlla le porte sul router** (passo 4): `7881` TCP e `50000-50100` UDP, verso l'indirizzo fisso del PC.
+3. **Controlla il firewall di Windows**: Start, scrivi "Windows Defender Firewall", **Impostazioni avanzate**, **Regole connessioni in entrata**, **Nuova regola**, **Porta**, `UDP` `50000-50100`, **Consenti la connessione**, nome "Live video". Ripeti con `TCP` `7881`.
+4. **Permessi del browser**: se compare "non ha dato il permesso per fotocamera o microfono", tocca il lucchetto vicino all'indirizzo e consenti fotocamera e microfono.
+5. Se ancora non va, in PowerShell nella cartella del social lancia `docker compose logs livekit --tail 80` e manda il risultato a Claude.
+
+### Il pannello di chi conduce
+
+Chi avvia una Live vede sotto il video il **Pannello della Live**: persone collegate ora, picco, quante ne sono entrate in tutto, chi è sul palco, mani alzate e da quanto dura la diretta. Toccando una persona puoi farla salire sul palco, farla scendere, **farla uscire** (non rientra in quella Live) o **bloccarla** (non entra più in nessuna delle tue Live). Chi hai fatto uscire o bloccato compare in fondo al pannello, con il tasto per farlo rientrare o sbloccarlo.
+
 ## Aggiornare il social
 
-Quando Claude prepara una versione nuova: scarica di nuovo lo ZIP, estrailo **sopra** la cartella `C:\social-trading-love` (il file `.env` con le tue password resta), poi in PowerShell:
+Quando Claude prepara una versione nuova, in PowerShell:
 
 ```
 cd C:\social-trading-love
+git pull
 docker compose --profile duckdns up -d --build
 ```
+
+Se non usi git: scarica di nuovo lo ZIP ed estrailo **sopra** la cartella `C:\social-trading-love` (il file `.env` con le tue password resta), poi lancia solo l'ultima riga. Il database si aggiorna da solo all'avvio: i tuoi utenti e i post restano.
+
+## Sicurezza degli accessi
+
+- **Codice via email all'iscrizione:** chi si iscrive riceve un codice di 6 cifre dalla tua casella (passo 8) e deve scriverlo per entrare. Finché l'email di invio non è impostata, il codice non viene chiesto, altrimenti nessuno potrebbe iscriversi. Gli utenti già iscritti valgono come confermati.
+- **Verifica in due passaggi:** ognuno la attiva da **Profilo**, ingranaggio, **Sicurezza**, con un'app gratuita come Google Authenticator. Attivala per prima sul tuo account di proprietario e conserva i codici di riserva.
+- **Pannello utenti:** nella Home tocca l'icona del pannello in alto (la vedono solo gli amministratori), poi **Tutti gli utenti**. Cerchi chiunque per nome o email e puoi confermare l'email, mandare il link per una nuova password, chiudere tutti i suoi accessi, togliere la verifica in due passaggi se ha perso il telefono, sospendere o riattivare. Gli amministratori li gestisci solo tu.
 
 ## Passo 8. Imposta l'email di invio e i dati per la privacy
 
@@ -121,7 +144,7 @@ Non devi fare niente: il servizio **backup** salva tutto da solo nella cartella 
 - Il primo backup parte all'avvio, poi uno ogni notte alle 3.
 - `db-AAAA-MM-GG.dump` è il database del giorno. Si tengono gli ultimi 14 giorni.
 - La cartella `uploads` contiene tutte le foto e i video.
-- Le **registrazioni delle Piazze** non entrano nel backup, perché occupano molto spazio. Se una ti serve, scaricala dalla pagina Piazze.
+- Le **registrazioni delle Live** non entrano nel backup, perché occupano molto spazio. Se una ti serve, scaricala dalla pagina Live.
 - Nel **Pannello amministratore** vedi quando è stato fatto l'ultimo backup. Se compare in giallo, il PC era spento o il servizio è fermo: lancia `docker compose up -d` nella cartella.
 
 **Importante:** il backup sta sullo stesso PC. Almeno una volta a settimana copia la cartella `backups` su una chiavetta o un disco esterno. Puoi anche farlo in automatico mettendo la cartella dentro OneDrive o Google Drive.
@@ -141,15 +164,15 @@ docker compose start api
 
 Se qualcosa non ti è chiaro, scrivi a Claude prima di farlo.
 
-## Registrazione delle Piazze
+## Registrazione delle Live
 
-Chi apre una Piazza può spuntare **Registra la Piazza**. Durante la diretta compare la scritta REC e chi entra viene avvisato. Quando la Piazza finisce, il video compare nella pagina **Piazze**, sezione **Registrazioni**, di solito dopo un paio di minuti.
+Chi apre una Live può spuntare **Registra la Live**. Durante la diretta compare la scritta REC e chi entra viene avvisato. Quando la Live finisce, il video compare nella pagina **Live**, sezione **Registrazioni**, di solito dopo un paio di minuti.
 
 Cosa devi sapere:
 
 - La registrazione la fa il servizio **egress**, che parte da solo con `docker compose up -d`. La prima volta scarica circa 1 GB.
 - Mentre registra usa circa **2 core del processore** e 1 GB di RAM. Su un PC con 8 GB va bene una registrazione alla volta.
-- Un'ora di Piazza occupa circa **300-500 MB** di disco. Cancella quelle che non servono più con il cestino nella pagina Piazze.
+- Un'ora di Live occupa circa **300-500 MB** di disco. Cancella quelle che non servono più con il cestino nella pagina Live.
 - I video stanno nel volume `recordings` di Docker, sul tuo PC. Non vanno su nessun servizio esterno.
 
 **Se il video non compare** (resta "In preparazione" per più di 10 minuti), lancia in PowerShell nella cartella del social:
@@ -160,4 +183,4 @@ docker compose logs egress --tail 50
 
 e mandami quello che esce. La causa più comune è il router che non lascia "rientrare" il PC sul proprio indirizzo pubblico: si risolve con una riga di configurazione.
 
-**Per spegnere le registrazioni del tutto:** apri il file `.env`, scrivi `RECORDINGS=false`, salva e lancia `docker compose up -d`. La casella "Registra la Piazza" sparisce dall'app.
+**Per spegnere le registrazioni del tutto:** apri il file `.env`, scrivi `RECORDINGS=false`, salva e lancia `docker compose up -d`. La casella "Registra la Live" sparisce dall'app.

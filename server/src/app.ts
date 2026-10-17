@@ -18,6 +18,7 @@ import adminRoutes from './routes/admin.js';
 import accountRoutes from './routes/account.js';
 import journalRoutes from './routes/journal.js';
 import challengeRoutes from './routes/challenges.js';
+import securityRoutes from './routes/security.js';
 import notificationRoutes from './routes/notifications.js';
 
 export type AuthUser = { id: number; role: 'member' | 'moderator' | 'admin'; username: string; isOwner: boolean };
@@ -60,17 +61,23 @@ export async function buildApp(opts: { logger?: boolean; rateLimit?: boolean } =
 
   // Verifica il token e ricarica l'utente: così un utente bloccato perde subito l'accesso.
   app.decorate('authenticate', async (req: FastifyRequest) => {
-    let payload: { id: number; iat?: number };
+    let payload: { id: number; iat?: number; purpose?: string };
     try {
-      payload = await req.jwtVerify<{ id: number; iat?: number }>();
+      payload = await req.jwtVerify<{ id: number; iat?: number; purpose?: string }>();
     } catch {
       throw new HttpError(401, 'Accesso richiesto');
     }
-    const user = await one('SELECT id, role, username, is_owner, banned_at, deleted_at, password_changed_at FROM users WHERE id = $1', [payload.id]);
+    // I "biglietti" a metà accesso (codice email, due fattori) non valgono come accesso.
+    if (payload.purpose) throw new HttpError(401, 'Accesso richiesto');
+    const user = await one('SELECT id, role, username, is_owner, banned_at, deleted_at, password_changed_at, sessions_revoked_at FROM users WHERE id = $1', [payload.id]);
     if (!user || user.deleted_at) throw new HttpError(401, 'Accesso richiesto');
     // Dopo un cambio password valgono solo gli accessi fatti dopo.
     if (user.password_changed_at && payload.iat && payload.iat < Math.floor(user.password_changed_at.getTime() / 1000)) {
       throw new HttpError(401, 'La password è cambiata: entra di nuovo');
+    }
+    // Un amministratore ha chiuso tutti gli accessi di questo account.
+    if (user.sessions_revoked_at && payload.iat && payload.iat < Math.floor(user.sessions_revoked_at.getTime() / 1000)) {
+      throw new HttpError(401, 'Sessione scaduta: entra di nuovo');
     }
     if (user.banned_at) throw new HttpError(403, 'Account sospeso');
     req.user = { id: user.id, role: user.role, username: user.username, isOwner: user.is_owner };
@@ -108,6 +115,7 @@ export async function buildApp(opts: { logger?: boolean; rateLimit?: boolean } =
   await app.register(accountRoutes, { prefix: '/api' });
   await app.register(journalRoutes, { prefix: '/api' });
   await app.register(challengeRoutes, { prefix: '/api' });
+  await app.register(securityRoutes, { prefix: '/api' });
   await app.register(notificationRoutes, { prefix: '/api' });
 
   return app;

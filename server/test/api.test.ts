@@ -13,6 +13,13 @@ const { pool } = await import('../src/db.js');
 const { migrate } = await import('../src/migrate.js');
 const { buildApp } = await import('../src/app.js');
 const { isAdult } = await import('../src/routes/auth.js');
+const { sentMails } = await import('../src/mail.js');
+const { totpCode, currentStep } = await import('../src/security.js');
+
+const lastCode = (to: string) => {
+  const m = [...sentMails].reverse().find((x) => x.to === to && /codice/.test(x.subject));
+  return m?.subject.match(/^(\d{6})/)?.[1] ?? '';
+};
 
 let app: Awaited<ReturnType<typeof buildApp>>;
 
@@ -27,9 +34,20 @@ after(async () => {
   await pool.end();
 });
 
-async function call(method: string, url: string, token?: string, payload?: unknown) {
+async function raw(method: string, url: string, token?: string, payload?: unknown) {
   const res = await app.inject({ method: method as any, url, payload: payload as any, headers: token ? { authorization: `Bearer ${token}` } : {} });
   return { status: res.statusCode, body: res.json() };
+}
+
+// Per i test più vecchi l'iscrizione si completa da sola con il codice arrivato via email.
+// Il test "codice via email" più sotto controlla ogni passaggio a mano.
+async function call(method: string, url: string, token?: string, payload?: unknown) {
+  const res = await raw(method, url, token, payload);
+  if (url === '/api/register' && res.body.verify) {
+    const done = await raw('POST', '/api/verify-email', undefined, { ticket: res.body.ticket, code: lastCode(res.body.email) });
+    return { status: res.status, body: done.body };
+  }
+  return res;
 }
 
 const person = (username: string, inviteCode?: string) => ({
@@ -161,7 +179,7 @@ test('moderazione: segnalazione, rimozione con motivazione, sospensione', async 
   assert.equal((await call('POST', '/api/login', undefined, { login: 'bruno', password: 'password123' })).status, 403);
 });
 
-test('Piazze live: palco, mano alzata, limite di 6 persone', async () => {
+test('Live: palco, mano alzata, limite di 6 persone', async () => {
   assert.equal((await call('POST', '/api/rooms', anna, { title: 'Rendimenti garantiti per tutti' })).status, 400);
   const created = await call('POST', '/api/rooms', anna, { title: 'Come gestire il rischio', topic: 'rischio' });
   assert.equal(created.status, 201);
@@ -211,6 +229,47 @@ test('Piazze live: palco, mano alzata, limite di 6 persone', async () => {
   assert.equal((await call('POST', `/api/rooms/${id}/join`, admin)).status, 400);
   const rooms = await call('GET', '/api/rooms', admin);
   assert.ok(!rooms.body.rooms.some((r: any) => r.id === id));
+});
+
+test('pannello della Live: numeri, fai uscire e blocca chi disturba', async () => {
+  const lino = (await call('POST', '/api/register', undefined, person('lino'))).body.token;
+  const linoId = (await call('GET', '/api/me', lino)).body.user.id;
+  const r = await call('POST', '/api/rooms', anna, { title: 'Domande sul rischio', startNow: true });
+  const id = r.body.room.id;
+  await call('POST', `/api/rooms/${id}/join`, anna);
+  assert.equal((await call('POST', `/api/rooms/${id}/join`, lino)).status, 200);
+  assert.equal((await call('POST', `/api/rooms/${id}/join`, admin)).status, 200);
+  await call('POST', `/api/rooms/${id}/hand`, lino);
+
+  assert.equal((await call('GET', `/api/rooms/${id}/panel`, lino)).status, 403, 'solo chi conduce');
+  const panel = await call('GET', `/api/rooms/${id}/panel`, anna);
+  assert.equal(panel.status, 200);
+  assert.equal(panel.body.stats.listeners, 3);
+  assert.equal(panel.body.stats.visitors, 2);
+  assert.equal(panel.body.stats.hands, 1);
+  assert.equal(panel.body.people[0].role, 'host');
+  assert.ok(panel.body.people.some((p: any) => p.id === linoId && p.handRaised));
+
+  assert.equal((await call('POST', `/api/rooms/${id}/kick/${annaId}`, anna, {})).status, 400, 'non te stesso');
+  const kicked = await call('POST', `/api/rooms/${id}/kick/${linoId}`, anna, {});
+  assert.equal(kicked.body.stats.listeners, 2);
+  assert.equal(kicked.body.kicked[0].id, linoId);
+  assert.equal((await call('GET', `/api/rooms/${id}`, lino)).body.me.removed, 'kicked');
+  assert.equal((await call('POST', `/api/rooms/${id}/join`, lino)).status, 403);
+
+  // Bloccato: fuori anche dalle Live successive della stessa persona.
+  await call('POST', `/api/rooms/${id}/kick/${linoId}`, anna, { block: true });
+  const next = await call('POST', '/api/rooms', anna, { title: 'Seconda diretta', startNow: true });
+  const blocked = await call('POST', `/api/rooms/${next.body.room.id}/join`, lino);
+  assert.equal(blocked.status, 403);
+  assert.match(blocked.body.error, /bloccato/);
+
+  const undo = await call('DELETE', `/api/rooms/${id}/kick/${linoId}`, anna);
+  assert.equal(undo.body.blocked.length, 0);
+  assert.equal((await call('POST', `/api/rooms/${next.body.room.id}/join`, lino)).status, 200);
+  assert.equal((await call('POST', `/api/rooms/${id}/join`, lino)).status, 200);
+  await call('POST', `/api/rooms/${id}/end`, anna);
+  await call('POST', `/api/rooms/${next.body.room.id}/end`, anna);
 });
 
 test('caricamento di una foto nel post', async () => {
@@ -495,7 +554,7 @@ test('sfida della settimana: partecipa, check-in, badge sul profilo', async () =
   assert.equal(plan.body.presets.length, 6);
 });
 
-test('Piazze registrate: avviso, registrazione e cancellazione', async () => {
+test('Live registrate: avviso, registrazione e cancellazione', async () => {
   const r = await call('POST', '/api/rooms', anna, { title: 'Analisi del venerdì', startNow: true, record: true });
   assert.equal(r.status, 201);
   assert.equal(r.body.room.record, true);
@@ -523,4 +582,99 @@ test('Piazze registrate: avviso, registrazione e cancellazione', async () => {
   assert.equal((await call('DELETE', `/api/recordings/${rec.id}`, bruno)).status, 403);
   assert.equal((await call('DELETE', `/api/recordings/${rec.id}`, anna)).status, 200);
   assert.equal((await app.inject({ method: 'GET', url: item.url })).statusCode, 404, 'il file è cancellato');
+});
+
+test('iscrizione con codice via email: senza codice non si entra', async () => {
+  const res = await raw('POST', '/api/register', undefined, person('ivo'));
+  assert.equal(res.status, 201);
+  assert.equal(res.body.verify, true);
+  assert.equal(res.body.token, undefined, 'niente accesso prima del codice');
+  assert.equal((await raw('GET', '/api/me', res.body.ticket)).status, 401, 'il biglietto non vale come accesso');
+  const code = lastCode('ivo@example.com');
+  assert.match(code, /^\d{6}$/);
+
+  const wrong = await raw('POST', '/api/verify-email', undefined, { ticket: res.body.ticket, code: code === '000000' ? '111111' : '000000' });
+  assert.equal(wrong.status, 400);
+  assert.match(wrong.body.error, /tentativi/);
+
+  // Anche il login, finché l'email non è confermata, chiede il codice.
+  const login = await raw('POST', '/api/login', undefined, { login: 'ivo', password: 'password123' });
+  assert.equal(login.body.verify, true);
+  const ok2 = await raw('POST', '/api/verify-email', undefined, { ticket: login.body.ticket, code: lastCode('ivo@example.com') });
+  assert.equal(ok2.status, 200);
+  assert.ok(ok2.body.token);
+  assert.equal((await raw('GET', '/api/me', ok2.body.token)).status, 200);
+  assert.ok((await raw('POST', '/api/login', undefined, { login: 'ivo', password: 'password123' })).body.token, 'dopo la conferma si entra subito');
+});
+
+test('accesso a due fattori: app, codici di riserva, blocco dopo 5 errori', async () => {
+  const lea = (await call('POST', '/api/register', undefined, person('lea'))).body.token;
+  assert.equal((await raw('POST', '/api/me/2fa/setup', lea, { password: 'sbagliata' })).status, 400);
+  const setup = await raw('POST', '/api/me/2fa/setup', lea, { password: 'password123' });
+  assert.match(setup.body.otpauthUrl, /^otpauth:\/\/totp\//);
+  assert.equal((await raw('POST', '/api/me/2fa/enable', lea, { code: '123456' })).status, 400);
+  const en = await raw('POST', '/api/me/2fa/enable', lea, { code: totpCode(setup.body.secret, currentStep()) });
+  assert.equal(en.status, 200);
+  assert.equal(en.body.recoveryCodes.length, 10);
+  assert.equal((await raw('GET', '/api/me/security', lea)).body.twoFactor, true);
+
+  const step1 = await raw('POST', '/api/login', undefined, { login: 'lea', password: 'password123' });
+  assert.equal(step1.body.twoFactor, true);
+  assert.equal(step1.body.token, undefined);
+  assert.equal((await raw('GET', '/api/me', step1.body.ticket)).status, 401);
+  // Lo stesso codice usato per attivare non vale una seconda volta: si usa il prossimo.
+  const next = totpCode(setup.body.secret, currentStep() + 1);
+  const in1 = await raw('POST', '/api/login/2fa', undefined, { ticket: step1.body.ticket, code: next });
+  assert.equal(in1.status, 200);
+  assert.ok(in1.body.token);
+  assert.equal((await raw('POST', '/api/login/2fa', undefined, { ticket: step1.body.ticket, code: next })).status, 401, 'il biglietto vale una volta');
+
+  // Codice di riserva: funziona una volta sola.
+  const step2 = await raw('POST', '/api/login', undefined, { login: 'lea', password: 'password123' });
+  const rc = en.body.recoveryCodes[0];
+  assert.equal((await raw('POST', '/api/login/2fa', undefined, { ticket: step2.body.ticket, code: rc.toUpperCase() })).status, 200);
+  const step3 = await raw('POST', '/api/login', undefined, { login: 'lea', password: 'password123' });
+  assert.equal((await raw('POST', '/api/login/2fa', undefined, { ticket: step3.body.ticket, code: rc })).status, 400);
+
+  // Cinque errori e il biglietto si blocca.
+  const step4 = await raw('POST', '/api/login', undefined, { login: 'lea', password: 'password123' });
+  for (let i = 0; i < 5; i++) await raw('POST', '/api/login/2fa', undefined, { ticket: step4.body.ticket, code: '000000' });
+  const blocked = await raw('POST', '/api/login/2fa', undefined, { ticket: step4.body.ticket, code: totpCode(setup.body.secret, currentStep() + 1) });
+  assert.equal(blocked.status, 429);
+
+  assert.equal((await raw('POST', '/api/me/2fa/disable', in1.body.token, { password: 'password123', code: en.body.recoveryCodes[1] })).status, 200);
+  assert.ok((await raw('POST', '/api/login', undefined, { login: 'lea', password: 'password123' })).body.token, 'senza due fattori si entra con la password');
+});
+
+test('pannello utenti: elenco, ricerca, gestione e limiti', async () => {
+  const list = await raw('GET', '/api/admin/users?q=lea', admin);
+  assert.equal(list.status, 200);
+  assert.equal(list.body.users.length, 1);
+  const lea = list.body.users[0];
+  assert.equal(lea.email, 'lea@example.com');
+  assert.ok(list.body.counts.all >= 5);
+  const member = (await call('POST', '/api/register', undefined, person('mimmo'))).body.token;
+  assert.equal((await raw('GET', '/api/admin/users', member)).status, 403, 'solo amministratori');
+
+  const detail = await raw('GET', `/api/admin/users/${lea.id}`, admin);
+  assert.equal(detail.body.canManage, true);
+  assert.ok(detail.body.user.lastLoginAt, "c'è l'ultimo accesso");
+
+  // Esci da tutti i dispositivi: il vecchio accesso non vale più.
+  const leaLogin = (await raw('POST', '/api/login', undefined, { login: 'lea', password: 'password123' })).body.token;
+  await new Promise((r) => setTimeout(r, 1100));
+  assert.equal((await raw('POST', `/api/admin/users/${lea.id}/logout`, admin)).status, 200);
+  assert.equal((await raw('GET', '/api/me', leaLogin)).status, 401);
+
+  assert.equal((await raw('POST', `/api/admin/users/${lea.id}/suspend`, admin, { statement: 'corto' })).status, 400);
+  assert.equal((await raw('POST', `/api/admin/users/${lea.id}/suspend`, admin, { statement: 'Spam ripetuto nei commenti dopo due avvisi' })).status, 200);
+  assert.equal((await raw('POST', '/api/login', undefined, { login: 'lea', password: 'password123' })).status, 403);
+  assert.equal((await raw('GET', '/api/admin/users?filter=suspended&q=lea', admin)).body.users.length, 1);
+
+  assert.equal((await raw('POST', `/api/admin/users/${lea.id}/password-reset`, admin)).status, 200);
+  assert.ok(sentMails.some((m) => m.to === 'lea@example.com' && /password/i.test(m.subject)));
+
+  // Un amministratore non proprietario non può toccare il proprietario né altri amministratori.
+  const owner = (await raw('GET', '/api/admin/users?q=francesco', admin)).body.users[0];
+  assert.equal((await raw('POST', `/api/admin/users/${owner.id}/suspend`, admin, { statement: 'prova sul proprietario' })).status, 403);
 });

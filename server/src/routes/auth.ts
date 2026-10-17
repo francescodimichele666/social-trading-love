@@ -1,11 +1,12 @@
 import type { FastifyInstance } from 'fastify';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
-import { one, tx } from '../db.js';
+import { one, query, tx } from '../db.js';
 import { HttpError } from '../app.js';
 import { RULES, RULES_VERSION } from '../rules.js';
 import { config } from '../config.js';
 import { TERMS_VERSION } from '../legal.js';
+import { checkSecondFactor, checkVerificationCode, emailVerificationActive, issueSession, readTicket, sendVerificationCode, signTicket } from '../security.js';
 
 const registerSchema = z.object({
   email: z.string().trim().toLowerCase().email(),
@@ -41,6 +42,9 @@ export default async function authRoutes(app: FastifyInstance) {
     const data = registerSchema.parse(req.body);
     if (!isAdult(data.birthDate)) throw new HttpError(400, 'La comunità è riservata ai maggiorenni');
     const passwordHash = await bcrypt.hash(data.password, 10);
+    // Se la casella email del titolare non è ancora impostata (per esempio il primo iscritto, il proprietario),
+    // l'email non si può confermare con un codice: in quel caso l'account è subito attivo.
+    const mustVerify = await emailVerificationActive();
 
     const user = await tx(async (c) => {
       // Lock per evitare che due persone diventino "primo utente" insieme.
@@ -61,15 +65,57 @@ export default async function authRoutes(app: FastifyInstance) {
       if (taken.rows[0]) throw new HttpError(409, 'Email o nome utente già in uso');
 
       const { rows: [u] } = await c.query(
-        `INSERT INTO users (email, username, password_hash, display_name, birth_date, role, is_owner, invited_by, rules_version, terms_version, terms_accepted_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, now()) RETURNING *`,
-        [data.email, data.username, passwordHash, data.displayName, data.birthDate, first ? 'admin' : 'member', first, invitedBy, RULES_VERSION, TERMS_VERSION],
+        `INSERT INTO users (email, username, password_hash, display_name, birth_date, role, is_owner, invited_by, rules_version, terms_version, terms_accepted_at, email_verified_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, now(), $11) RETURNING *`,
+        [data.email, data.username, passwordHash, data.displayName, data.birthDate, first ? 'admin' : 'member', first, invitedBy, RULES_VERSION, TERMS_VERSION, mustVerify ? null : new Date()],
       );
       return u;
     });
 
     reply.status(201);
-    return { token: app.jwt.sign({ id: user.id }), user: publicUser(user) };
+    if (!user.email_verified_at) {
+      await sendVerificationCode(user);
+      return { verify: true, ticket: await signTicket(app, user.id, 'verify'), email: user.email };
+    }
+    return { token: await issueSession(app, user.id), user: publicUser(user) };
+  });
+
+  // Passo 2 dell'iscrizione (o di un accesso con email non ancora confermata): il codice arrivato via email.
+  app.post('/verify-email', { config: { rateLimit: { max: 20, timeWindow: '15 minutes' } } }, async (req) => {
+    const { ticket, code } = z.object({ ticket: z.string(), code: z.string().trim().min(6).max(10) }).parse(req.body);
+    const t = readTicket(app, ticket, 'verify');
+    await checkVerificationCode(t.id, code);
+    const user = await one('SELECT * FROM users WHERE id = $1 AND deleted_at IS NULL', [t.id]);
+    if (!user) throw new HttpError(401, 'Account non trovato');
+    if (user.banned_at) throw new HttpError(403, `Account sospeso: ${user.ban_reason ?? ''}`.trim());
+    if (user.totp_secret) return { twoFactor: true, ticket: await signTicket(app, user.id, '2fa') };
+    return { token: await issueSession(app, user.id), user: publicUser(user) };
+  });
+
+  app.post('/verify-email/resend', { config: { rateLimit: { max: 5, timeWindow: '15 minutes' } } }, async (req) => {
+    const { ticket } = z.object({ ticket: z.string() }).parse(req.body);
+    const t = readTicket(app, ticket, 'verify');
+    const user = await one('SELECT id, email, display_name, email_verified_at FROM users WHERE id = $1 AND deleted_at IS NULL', [t.id]);
+    if (!user || user.email_verified_at) throw new HttpError(400, "L'email è già confermata: entra con email e password");
+    await sendVerificationCode(user);
+    return { message: `Codice nuovo inviato a ${user.email}` };
+  });
+
+  // Passo 2 dell'accesso con i due fattori: codice dell'app o codice di riserva. Massimo 5 tentativi per accesso.
+  app.post('/login/2fa', { config: { rateLimit: { max: 20, timeWindow: '15 minutes' } } }, async (req) => {
+    const { ticket, code } = z.object({ ticket: z.string(), code: z.string().trim().min(6).max(20) }).parse(req.body);
+    const t = readTicket(app, ticket, '2fa');
+    const ch = await one('SELECT attempts, used_at, expires_at FROM login_challenges WHERE id = $1 AND user_id = $2', [t.cid, t.id]);
+    if (!ch || ch.used_at || ch.expires_at < new Date()) throw new HttpError(401, 'Il passaggio è scaduto: rientra con email e password');
+    if (ch.attempts >= 5) throw new HttpError(429, 'Troppi codici sbagliati: rientra con email e password');
+    if (!(await checkSecondFactor(t.id, code))) {
+      await query('UPDATE login_challenges SET attempts = attempts + 1 WHERE id = $1', [t.cid]);
+      throw new HttpError(400, `Codice non corretto (${4 - ch.attempts} tentativi rimasti)`);
+    }
+    await query('UPDATE login_challenges SET used_at = now() WHERE id = $1', [t.cid]);
+    const user = await one('SELECT * FROM users WHERE id = $1 AND deleted_at IS NULL', [t.id]);
+    if (!user || user.banned_at) throw new HttpError(403, 'Account non attivo');
+    return { token: await issueSession(app, user.id), user: publicUser(user) };
   });
 
   app.post('/login', { config: { rateLimit: { max: 20, timeWindow: '15 minutes' } } }, async (req) => {
@@ -77,12 +123,17 @@ export default async function authRoutes(app: FastifyInstance) {
     const user = await one('SELECT * FROM users WHERE (email = $1 OR username = $1) AND deleted_at IS NULL', [login]);
     if (!user || !(await bcrypt.compare(password, user.password_hash))) throw new HttpError(401, 'Credenziali non corrette');
     if (user.banned_at) throw new HttpError(403, `Account sospeso: ${user.ban_reason ?? ''}`.trim());
-    return { token: app.jwt.sign({ id: user.id }), user: publicUser(user) };
+    if (!user.email_verified_at) {
+      await sendVerificationCode(user).catch((e) => { if (e.statusCode !== 429) throw e; });
+      return { verify: true, ticket: await signTicket(app, user.id, 'verify'), email: user.email };
+    }
+    if (user.totp_secret) return { twoFactor: true, ticket: await signTicket(app, user.id, '2fa') };
+    return { token: await issueSession(app, user.id), user: publicUser(user) };
   });
 
   app.get('/me', { preHandler: app.authenticate }, async (req) => {
     const user = await one('SELECT * FROM users WHERE id = $1', [req.user.id]);
     const unread = await one<{ n: number }>('SELECT count(*)::int AS n FROM notifications WHERE user_id = $1 AND read_at IS NULL', [req.user.id]);
-    return { user: { ...publicUser(user), email: user.email, termsVersion: user.terms_version }, currentTermsVersion: TERMS_VERSION, unreadNotifications: unread?.n ?? 0 };
+    return { user: { ...publicUser(user), email: user.email, termsVersion: user.terms_version, twoFactor: Boolean(user.totp_secret) }, currentTermsVersion: TERMS_VERSION, unreadNotifications: unread?.n ?? 0 };
   });
 }

@@ -4,7 +4,7 @@ import { api } from '../api';
 import { useAuth } from '../auth';
 import Icon from './Icon';
 
-const WHAT = { post: 'questo post', comment: 'questo commento', room: 'questa Piazza' };
+const WHAT = { post: 'questo post', comment: 'questo commento', room: 'questa Live' };
 
 // Solo per amministratori: toglie subito un contenuto, con la motivazione che arriva all'autore.
 export default function RemoveButton({ targetType, targetId, authorIsOwner, onRemoved }: {

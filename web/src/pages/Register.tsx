@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../auth';
 import HeartChart from '../components/HeartChart';
+import { AuthStepForm, nextStep, type Step } from '../components/AuthSteps';
 
 export default function Register() {
   const { login } = useAuth();
@@ -13,6 +14,7 @@ export default function Register() {
   const [form, setForm] = useState({ displayName: '', username: '', email: '', password: '', birthDate: '', acceptRules: false, acceptTerms: false });
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [step, setStep] = useState<Step | null>(null);
 
   useEffect(() => { api('/rules').then((r) => setFirstUser(Boolean(r.firstUser))).catch(() => {}); }, []);
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -24,6 +26,8 @@ export default function Register() {
     setError('');
     try {
       const res = await api('/register', { body: { ...form, inviteCode: friendCode || undefined } });
+      const next = nextStep(res);
+      if (next) { setStep(next); return; }
       await login(res.token);
       navigate('/', { replace: true });
     } catch (err: any) {
@@ -32,6 +36,11 @@ export default function Register() {
       setBusy(false);
     }
   };
+
+  if (step) {
+    return <AuthStepForm step={step} onStep={setStep} onCancel={() => setStep(null)}
+      onToken={async (token) => { await login(token); navigate('/', { replace: true }); }} />;
+  }
 
   return (
     <form className="auth" onSubmit={submit}>

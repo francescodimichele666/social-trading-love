@@ -22,7 +22,7 @@ export function newInviteCode(): string {
   return Array.from(bytes, (b) => alphabet[b % alphabet.length]).join('');
 }
 
-// La prima volta che un invitato partecipa davvero (pubblica o entra in una Piazza),
+// La prima volta che un invitato partecipa davvero (pubblica o entra in una Live),
 // chi lo ha portato riceve un avviso e lo conta tra i suoi amici attivi.
 export async function rewardInviterOnce(userId: number) {
   const res = await pool.query(

@@ -66,7 +66,7 @@ export default function Feed({ onCompose }: { onCompose: () => void }) {
           <div className="big-ico"><Icon name="check" size={28} /></div>
           <strong>Hai visto tutto per oggi</strong>
           <p>Nessuno scorrimento infinito. Vuoi fare due chiacchiere dal vivo?</p>
-          <Link className="btn" to="/piazze">Vai alle Piazze</Link>
+          <Link className="btn" to="/live">Vai alle Live</Link>
         </div>
       )}
     </div>

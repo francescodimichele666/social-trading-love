@@ -44,7 +44,7 @@ export default function Rooms() {
       const body: any = { title: form.title, description: form.description, topic: form.topic, startNow: form.startNow, record: form.record };
       if (!form.startNow && form.scheduledAt) body.scheduledAt = new Date(form.scheduledAt).toISOString();
       const res = await api('/rooms', { body });
-      navigate(`/piazze/${res.room.id}`);
+      navigate(`/live/${res.room.id}`);
     } catch (err: any) {
       setError(err.message);
     }
@@ -54,7 +54,7 @@ export default function Rooms() {
   const upcoming = rooms.filter((r) => r.status === 'scheduled');
 
   const card = (r: Room) => (
-    <Link key={r.id} to={`/piazze/${r.id}`} className={`room-card ${r.status === 'live' ? 'live' : ''}`}>
+    <Link key={r.id} to={`/live/${r.id}`} className={`room-card ${r.status === 'live' ? 'live' : ''}`}>
       <div className={`room-cover ${coverFor(r)}`}>
         <span className="cover-pills">
           <span className={`pill ${r.status === 'live' ? 'live' : 'soft'}`}>{r.status === 'live' ? '● IN DIRETTA' : when(r)}</span>
@@ -78,7 +78,7 @@ export default function Rooms() {
   return (
     <div className="page">
       <header className="top">
-        <h1 className="title">Piazze</h1>
+        <h1 className="title">Live</h1>
         <button className={`btn ${creating ? 'ghost' : ''}`} onClick={() => setCreating(!creating)}>{creating ? 'Chiudi' : <><Icon name="plus" size={18} /> Nuova</>}</button>
       </header>
       <p className="muted">Stanze dal vivo: fino a 6 persone sul palco, chi ascolta alza la mano per intervenire.</p>
@@ -95,11 +95,11 @@ export default function Rooms() {
           {recordingsEnabled && (
             <label className="check">
               <input type="checkbox" checked={form.record} onChange={(e) => setForm({ ...form, record: e.target.checked })} />
-              <span>Registra la Piazza<small className="muted"> Chi entra viene avvisato. Dopo la fine il video resta nella sezione Registrazioni e puoi cancellarlo quando vuoi.</small></span>
+              <span>Registra la Live<small className="muted"> Chi entra viene avvisato. Dopo la fine il video resta nella sezione Registrazioni e puoi cancellarlo quando vuoi.</small></span>
             </label>
           )}
           {error && <p className="error">{error}</p>}
-          <button className="btn big">{form.startNow ? 'Vai in diretta' : 'Programma la Piazza'}</button>
+          <button className="btn big">{form.startNow ? 'Vai in diretta' : 'Programma la Live'}</button>
         </form>
       )}
       {live.length > 0 && <h2 className="section-title"><span className="dot" /> In diretta ora</h2>}
@@ -114,7 +114,7 @@ export default function Rooms() {
       {rooms.length === 0 && (
         <div className="the-end">
           <div className="big-ico"><Icon name="live" size={28} /></div>
-          <strong>Nessuna Piazza in programma</strong>
+          <strong>Nessuna Live in programma</strong>
           <p>Aprine una tu: anche una chiacchierata di 20 minuti aiuta la comunità.</p>
         </div>
       )}

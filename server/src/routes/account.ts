@@ -15,6 +15,18 @@ import { encrypt, getSetting, setSetting, type LegalSettings, type MailSettings 
 const sha256 = (s: string) => createHash('sha256').update(s).digest('hex');
 const password = z.string().min(8, 'almeno 8 caratteri').max(200);
 
+// Manda il link per scegliere una nuova password (usato anche dal pannello utenti degli amministratori).
+export async function sendResetLink(req: FastifyRequest, user: { id: number; email: string; display_name: string }) {
+  const token = randomBytes(32).toString('base64url');
+  await query(`INSERT INTO password_resets (user_id, token_hash, expires_at) VALUES ($1, $2, now() + interval '1 hour')`, [user.id, sha256(token)]);
+  const link = `${publicUrl(req)}/reimposta-password?token=${token}`;
+  await sendMail({
+    to: user.email,
+    subject: 'Reimposta la tua password - Love Trading Club',
+    text: `Ciao ${user.display_name},\n\nhai chiesto di cambiare la password di Love Trading Club. Apri questo link entro un'ora:\n\n${link}\n\nSe non sei stato tu, ignora questa email: la tua password resta quella di prima.\n\nLove Trading Club`,
+  });
+}
+
 function publicUrl(req: FastifyRequest) {
   if (config.publicUrl) return config.publicUrl.replace(/\/$/, '');
   const origin = req.headers.origin;
@@ -43,17 +55,8 @@ export default async function accountRoutes(app: FastifyInstance) {
     if (!(await mailConfigured()) && process.env.MAIL_TEST !== '1') {
       throw new HttpError(503, "Il recupero della password non è ancora attivo. Scrivi all'amministratore della comunità.");
     }
-    const user = await one('SELECT id, display_name FROM users WHERE email = $1 AND banned_at IS NULL AND deleted_at IS NULL', [email]);
-    if (user) {
-      const token = randomBytes(32).toString('base64url');
-      await query(`INSERT INTO password_resets (user_id, token_hash, expires_at) VALUES ($1, $2, now() + interval '1 hour')`, [user.id, sha256(token)]);
-      const link = `${publicUrl(req)}/reimposta-password?token=${token}`;
-      await sendMail({
-        to: email,
-        subject: 'Reimposta la tua password - Love Trading Club',
-        text: `Ciao ${user.display_name},\n\nhai chiesto di cambiare la password di Love Trading Club. Apri questo link entro un'ora:\n\n${link}\n\nSe non sei stato tu, ignora questa email: la tua password resta quella di prima.\n\nLove Trading Club`,
-      });
-    }
+    const user = await one('SELECT id, email, display_name FROM users WHERE email = $1 AND banned_at IS NULL AND deleted_at IS NULL', [email]);
+    if (user) await sendResetLink(req, user);
     // Stessa risposta in ogni caso, così nessuno può scoprire quali email sono iscritte.
     return { message: "Se l'email è iscritta, ti abbiamo mandato un link per scegliere una nuova password. Controlla anche lo spam." };
   });

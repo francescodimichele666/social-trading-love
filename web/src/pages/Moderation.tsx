@@ -6,7 +6,7 @@ type Report = {
   id: number; targetType: 'post' | 'comment' | 'user' | 'room'; targetId: number; reasonLabel: string; details: string; createdAt: string; reporter: string;
   target: { ownerId: number; preview: string; mediaUrl?: string; removed?: boolean; postId?: number } | null;
 };
-const TYPE = { post: 'Post', comment: 'Commento', user: 'Profilo', room: 'Piazza' };
+const TYPE = { post: 'Post', comment: 'Commento', user: 'Profilo', room: 'Live' };
 
 function ReportItem({ r, onDone }: { r: Report; onDone: () => void }) {
   const [statement, setStatement] = useState('');
@@ -20,7 +20,7 @@ function ReportItem({ r, onDone }: { r: Report; onDone: () => void }) {
       setError(e.message);
     }
   };
-  const link = r.targetType === 'post' ? `/post/${r.targetId}` : r.targetType === 'comment' && r.target?.postId ? `/post/${r.target.postId}` : r.targetType === 'room' ? `/piazze/${r.targetId}` : null;
+  const link = r.targetType === 'post' ? `/post/${r.targetId}` : r.targetType === 'comment' && r.target?.postId ? `/post/${r.target.postId}` : r.targetType === 'room' ? `/live/${r.targetId}` : null;
   return (
     <div className="card report">
       <div className="room-top"><span className="pill warn">{TYPE[r.targetType]}</span><small className="muted">{r.reporter} · {timeAgo(r.createdAt)}</small></div>

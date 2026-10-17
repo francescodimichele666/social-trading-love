@@ -7,7 +7,8 @@ export async function createLiveToken(roomId: number, user: { id: number; displa
   const at = new AccessToken(config.livekitApiKey, config.livekitApiSecret, {
     identity: String(user.id),
     name: user.displayName,
-    ttl: '6h',
+    // Breve: chi viene fatto uscire non può rientrare col vecchio biglietto. A chi resta collegato LiveKit lo rinnova da solo.
+    ttl: '15m',
   });
   at.addGrant({ roomJoin: true, room: roomName(roomId), canPublish, canSubscribe: true, canPublishData: true });
   return at.toJwt();
@@ -25,8 +26,18 @@ export async function setCanPublish(roomId: number, userId: number, canPublish: 
   }
 }
 
+// Stacca subito qualcuno dalla diretta (fatto uscire da chi conduce, o account sospeso).
+export async function removeFromLive(roomId: number, userId: number) {
+  if (!config.livekitSync) return;
+  try {
+    await service().removeParticipant(roomName(roomId), String(userId));
+  } catch {
+    /* non era collegato */
+  }
+}
+
 export async function closeLiveRoom(roomId: number) {
-  // Se la Piazza era registrata, la registrazione si ferma e il video va in preparazione.
+  // Se la Live era registrata, la registrazione si ferma e il video va in preparazione.
   await (await import('./recordings.js')).stopRecording(roomId);
   if (!config.livekitSync) return;
   try {

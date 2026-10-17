@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import HeartChart from '../components/HeartChart';
 import Icon from '../components/Icon';
 
-const TICKER = ['Stop loss rispettato', 'Rischio 1% a operazione', 'Diario di trading', 'Piazza live alle 21', 'Nessun segnale da copiare', 'Anche le perdite si raccontano', 'Pazienza > fretta'];
+const TICKER = ['Stop loss rispettato', 'Rischio 1% a operazione', 'Diario di trading', 'Live alle 21', 'Nessun segnale da copiare', 'Anche le perdite si raccontano', 'Pazienza > fretta'];
 
 export default function Welcome() {
   return (
@@ -21,7 +21,7 @@ export default function Welcome() {
       <section className="feature-row">
         <article className="feature">
           <span className="create-ico coral"><Icon name="live" /></span>
-          <h3>Piazze live</h3>
+          <h3>Live</h3>
           <p>Fino a 6 persone sul palco. Chi ascolta alza la mano e sale a parlare.</p>
         </article>
         <article className="feature">

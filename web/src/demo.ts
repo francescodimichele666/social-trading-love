@@ -35,20 +35,20 @@ const posts: DemoPost[] = [
   { id: 6, authorId: 2, body: 'Dal mio diario: chiusa in guadagno, ma sono uscita prima dell\'obiettivo per paura. Voi lasciate lavorare il piano fino in fondo?', mediaUrl: null, mediaType: null, tradeId: 5, createdAt: ago(55), likes: new Set<number>([1, 3, 4]), comments: [{ id: 3, authorId: 3, body: 'Succede anche a me! Però +2 R resta un ottimo risultato.', createdAt: ago(40) }] },
   { id: 5, authorId: 2, body: 'Primo video! Come decido lo stop loss prima di entrare, e perché non lo sposto mai. Ditemi come fate voi 👇', mediaUrl: demoVideo, mediaType: 'video' as const, mediaPoster: demoPoster, mediaDuration: 9, createdAt: ago(12), likes: new Set<number>([3, 4]), comments: [{ id: 2, authorId: 4, body: 'Chiarissimo, grazie Giulia!', createdAt: ago(6) }] },
   { id: 1, authorId: 2, body: 'Operazione chiusa in perdita (-0,8%). Ho rispettato lo stop loss senza spostarlo: per me oggi è una vittoria. Il grafico con il punto di uscita 👇', mediaUrl: chart('#2dd4bf', '0,60 60,80 120,70 180,110 240,130 300,155 340,160'), mediaType: 'image' as const, createdAt: ago(35), likes: new Set<number>([1, 3]), comments: [{ id: 1, authorId: 3, body: 'Rispetto! Io lo spostavo sempre e perdevo il doppio.', createdAt: ago(20) }] },
-  { id: 2, authorId: 3, body: 'Domanda per chi ha più esperienza: come gestite la voglia di "rifarvi" dopo una perdita? Stasera ne parliamo nella Piazza di Giulia?', mediaUrl: null, mediaType: null, createdAt: ago(80), likes: new Set([2]), comments: [] },
+  { id: 2, authorId: 3, body: 'Domanda per chi ha più esperienza: come gestite la voglia di "rifarvi" dopo una perdita? Stasera ne parliamo nella Live di Giulia?', mediaUrl: null, mediaType: null, createdAt: ago(80), likes: new Set([2]), comments: [] },
   { id: 3, authorId: 1, body: 'Benvenuti nella comunità! Regola numero uno: mai rischiare più dell\'1% del capitale su una singola operazione. Raccontate anche gli errori: è così che si impara.', mediaUrl: null, mediaType: null, createdAt: ago(300), likes: new Set([2, 3, 4]), comments: [] },
   { id: 4, authorId: 4, body: 'Piano di accumulo su ETF mondiale: 18 mesi, zero operazioni impulsive. Noioso? Sì. Funziona? Per me sì.', mediaUrl: chart('#a78bfa', '0,170 60,160 120,150 180,140 240,120 300,100 360,80 400,70'), mediaType: 'image' as const, createdAt: ago(600), likes: new Set([1]), comments: [] },
 ];
 
 const rooms: DemoRoom[] = [
   { id: 1, hostId: 2, title: 'Gestire le perdite senza farsi male', description: 'Chiacchierata aperta: raccontiamo come reagiamo dopo una perdita. Alzate la mano per intervenire.', topic: 'psicologia', status: 'live' as const, scheduledAt: ago(25), startedAt: ago(25), stage: [2, 3], hands: [4], listeners: 14, record: true },
-  { id: 2, hostId: 1, title: 'Come si calcola la size di una posizione', description: 'Esempi pratici con numeri veri: capitale, rischio per operazione, stop loss.', topic: 'rischio', status: 'scheduled' as const, scheduledAt: new Date(now + 26 * 3600000).toISOString(), startedAt: null, stage: [1], hands: [], listeners: 0 },
+  { id: 2, hostId: 1, title: 'Come si calcola la size di una posizione', description: 'Esempi pratici con numeri veri: capitale, rischio per operazione, stop loss.', topic: 'rischio', status: 'scheduled' as const, scheduledAt: new Date(now + 26 * 3600000).toISOString(), startedAt: null, stage: [1], hands: [3], listeners: 0 },
 ];
 
 rooms.push({ id: 3, hostId: 2, title: 'Il mio primo anno di trading: errori e lezioni', description: 'Giulia racconta cosa ha sbagliato e cosa rifarebbe.', topic: 'psicologia', status: 'ended', scheduledAt: ago(60 * 26), startedAt: ago(60 * 26), stage: [2], hands: [], listeners: 0, record: true });
 
 const notifications = [
-  { id: 1, kind: 'room_live', message: '@giulia è in diretta: Gestire le perdite senza farsi male', link: '/piazze/1', read: false, createdAt: ago(25) },
+  { id: 1, kind: 'room_live', message: '@giulia è in diretta: Gestire le perdite senza farsi male', link: '/live/1', read: false, createdAt: ago(25) },
   { id: 2, kind: 'comment', message: '@giulia ha commentato il tuo post', link: '/post/3', read: false, createdAt: ago(90) },
   { id: 3, kind: 'invite_reward', message: 'Marco Bianchi è entrato nella comunità grazie a te.', link: '/inviti', read: true, createdAt: ago(2000) },
 ];
@@ -146,6 +146,52 @@ const serializeRecording = (r: (typeof recordings)[number]) => {
   const h = user(r.hostId);
   return { ...r, host: { username: h.username, displayName: h.displayName, avatarUrl: h.avatarUrl } };
 };
+
+let myTwoFactor = false;
+const demoUserExtra: Record<number, { lastLoginAt: string; emailVerified: boolean; twoFactor: boolean; history: any[] }> = {};
+const adminUsers = () => [...users, { id: 9, username: 'guru_vip', displayName: 'Guru VIP', bio: '', interests: [], avatarUrl: null, role: 'member' as const }].map((u: any, i) => {
+  const extra = demoUserExtra[u.id] ?? (demoUserExtra[u.id] = { lastLoginAt: ago(u.id * 37), emailVerified: u.id !== 4, twoFactor: u.id === 2, history: [] });
+  const s = suspended.find((x) => x.id === u.id);
+  return {
+    id: u.id, username: u.username, displayName: u.displayName, email: `${u.username}@esempio.it`, avatarUrl: u.avatarUrl, role: u.role, isOwner: Boolean(u.isOwner),
+    createdAt: ago(60 * 24 * (40 - i * 9)), lastLoginAt: u.id === ME ? new Date().toISOString() : extra.lastLoginAt,
+    emailVerified: extra.emailVerified, twoFactor: u.id === ME ? myTwoFactor : extra.twoFactor,
+    suspended: Boolean(s), suspendedAt: s?.suspendedAt ?? null, suspendReason: s?.reason ?? null,
+    posts: posts.filter((p) => p.authorId === u.id).length, invitedBy: u.id === 3 ? 'francesco' : null,
+  };
+});
+
+// Pannello di chi conduce: tutti gli altri utenti dell'anteprima sono "collegati".
+const demoKicked = new Map<number, Set<number>>();
+const demoBlocked = new Set<number>();
+function demoLivePanel(r: DemoRoom, action: string, method: string, body: any) {
+  if (r.hostId !== ME) throw new DemoError(403, 'Il pannello della Live è solo per chi la conduce');
+  const kicked = demoKicked.get(r.id) ?? new Set<number>();
+  demoKicked.set(r.id, kicked);
+  const km = action.match(/^kick\/(\d+)$/);
+  if (km) {
+    const id = Number(km[1]);
+    if (method === 'DELETE') { kicked.delete(id); demoBlocked.delete(id); }
+    else {
+      kicked.add(id);
+      if (body?.block) demoBlocked.add(id);
+      r.stage = r.stage.filter((x) => x !== id); r.hands = r.hands.filter((x) => x !== id);
+    }
+  }
+  const present = users.filter((u) => u.id === ME || (!kicked.has(u.id) && !demoBlocked.has(u.id)));
+  const role = (id: number) => (id === r.hostId ? 'host' : r.stage.includes(id) ? 'speaker' : 'audience');
+  const order: Record<string, number> = { host: 0, speaker: 1, audience: 2 };
+  const people = present
+    .map((u) => ({ ...brief(u), role: role(u.id), handRaised: r.hands.includes(u.id), joinedAt: r.startedAt ?? new Date().toISOString() }))
+    .sort((a, b) => order[a.role] - order[b.role] || Number(b.handRaised) - Number(a.handRaised));
+  const seconds = r.startedAt ? Math.round((Date.now() - new Date(r.startedAt).getTime()) / 1000) : 0;
+  return {
+    stats: { listeners: people.length, peak: Math.max(people.length, 4), visitors: users.length - 1 + kicked.size, onStage: r.stage.length, hands: r.hands.length, seconds },
+    people,
+    kicked: [...kicked].filter((id) => !demoBlocked.has(id)).map((id) => ({ ...brief(user(id)), at: new Date().toISOString() })),
+    blocked: [...demoBlocked].map((id) => ({ ...brief(user(id)), at: new Date().toISOString() })),
+  };
+}
 
 const RULES = [
   'Qui si impara e ci si confronta: nessun consiglio di investimento personalizzato e nessun "segnale" da copiare.',
@@ -353,6 +399,52 @@ export async function demoApi(path: string, method: string, body: any): Promise<
     };
   }
   if (route === '/admin/suspended') return { users: suspended };
+  // Pannello utenti (nell'anteprima le azioni cambiano solo i dati in memoria).
+  if (route === '/admin/users') {
+    const q = (params.get('q') ?? '').toLowerCase();
+    const filter = params.get('filter') ?? 'all';
+    const all = adminUsers();
+    const test: Record<string, (u: any) => boolean> = {
+      all: () => true, staff: (u) => u.role !== 'member', suspended: (u) => u.suspended, unverified: (u) => !u.emailVerified,
+      twofactor: (u) => u.twoFactor, new: (u) => Date.now() - +new Date(u.createdAt) < 7 * 86400000,
+    };
+    const counts = Object.fromEntries(Object.entries(test).map(([k, f]) => [k, all.filter(f).length]));
+    const list = all.filter(test[filter]).filter((u) => !q || `${u.username} ${u.displayName} ${u.email}`.toLowerCase().includes(q));
+    return { users: list, nextPage: null, counts };
+  }
+  if ((match = m(/^\/admin\/users\/(\d+)(?:\/(.+))?$/))) {
+    const id = Number(match[1]);
+    const u = adminUsers().find((x) => x.id === id);
+    if (!u) throw new DemoError(404, 'Utente non trovato');
+    const action = match[2];
+    const extra = demoUserExtra[id] ?? (demoUserExtra[id] = { lastLoginAt: ago(id * 37), emailVerified: id !== 4, twoFactor: id === 2, history: [] });
+    if (action) {
+      if (u.isOwner) throw new DemoError(403, 'Il proprietario non si può modificare da qui');
+      const log = (a: string, st: string) => extra.history.unshift({ action: a, statement: st, createdAt: new Date().toISOString(), by: 'francesco' });
+      if (['suspend', 'reinstate', 'reset-2fa'].includes(action) && String(body?.statement ?? '').trim().length < 10) throw new DemoError(400, 'Scrivi una motivazione chiara (almeno 10 caratteri)');
+      if (action === 'suspend') { suspended.unshift({ id, username: u.username, displayName: u.displayName, avatarUrl: null, role: u.role, suspendedAt: new Date().toISOString(), reason: body.statement }); log('ban', body.statement); }
+      if (action === 'reinstate') { const i = suspended.findIndex((x) => x.id === id); if (i >= 0) suspended.splice(i, 1); log('reinstate', body.statement); }
+      if (action === 'reset-2fa') { extra.twoFactor = false; log('reset_2fa', body.statement); }
+      if (action === 'verify-email') { extra.emailVerified = true; log('verify_email', 'Email confermata a mano da un amministratore'); }
+      if (action === 'logout') { log('logout', 'Chiusi tutti gli accessi aperti'); return { done: true, message: `${u.displayName} dovrà rientrare con email e password su tutti i dispositivi.` }; }
+      if (action === 'password-reset') return { done: true, message: `Nell'anteprima non parte nessuna email: sul server vero arriva a ${u.email}` };
+      return { done: true };
+    }
+    return {
+      user: { ...u, birthDate: '1985-01-01', comments: 3 * id, followers: 5 + id, invited: id === 1 ? 2 : 0, trades: trades.filter((t) => t.userId === id).length, rooms: rooms.filter((r) => r.hostId === id).length, reports: id === 9 ? 2 : 0 },
+      history: extra.history,
+      canManage: !u.isOwner,
+    };
+  }
+  if (route === '/me/security') return { email: 'francesco@esempio.it', emailVerified: true, twoFactor: myTwoFactor, twoFactorSince: null, recoveryCodesLeft: myTwoFactor ? 10 : 0 };
+  if (route === '/me/2fa/setup') return { secret: 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP', otpauthUrl: 'otpauth://totp/Love%20Trading%20Club%3Afrancesco%40esempio.it?secret=JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP&issuer=Love%20Trading%20Club' };
+  if (route === '/me/2fa/enable') {
+    if (!/^\d{6}$/.test(String(body.code).trim())) throw new DemoError(400, "Codice non corretto: controlla che l'ora del telefono sia giusta e riprova");
+    myTwoFactor = true;
+    return { recoveryCodes: ['k7pq-2mxa', 'h3vd-9wcz', 'r8nt-4eky', 'b2sf-7qjm', 'x5gu-3hpa', 'm9ce-6tdw', 'p4yr-8nkb', 'w6ja-2vxs', 'd3zm-5fqe', 't7kh-9rcu'] };
+  }
+  if (route === '/me/2fa/disable') { myTwoFactor = false; return { disabled: true }; }
+  if (route === '/me/2fa/recovery-codes') return { recoveryCodes: ['n2wd-8kpe', 'f5ry-3mta', 'c9qh-6zvb', 'j4ex-7sgn', 'u8kb-2dwm', 'a3tp-5yhc', 'g6vn-9rqx', 'y2ms-4kfe', 'e7bz-8wja', 'q5dh-3nut'] };
   if ((match = m(/^\/admin\/users\/(\d+)\/reinstate$/))) {
     if (String(body.statement ?? '').trim().length < 10) throw new DemoError(400, 'Scrivi una motivazione chiara (almeno 10 caratteri)');
     suspended.splice(suspended.findIndex((u) => u.id === Number(match![1])), 1);
@@ -374,10 +466,10 @@ export async function demoApi(path: string, method: string, body: any): Promise<
   if ((match = m(/^\/recordings\/(\d+)$/))) { recordings.splice(recordings.findIndex((r) => r.id === Number(match![1])), 1); return { deleted: true }; }
   if ((match = m(/^\/rooms\/(\d+)(?:\/(.+))?$/))) {
     const r = rooms.find((x) => x.id === Number(match![1]));
-    if (!r) throw new DemoError(404, 'Piazza non trovata');
+    if (!r) throw new DemoError(404, 'Live non trovata');
     const action = match[2] ?? '';
     const isHost = r.hostId === ME;
-    if (action === 'start') { r.status = 'live'; r.startedAt = new Date().toISOString(); return { room: serializeRoom(r) }; }
+    if (action === 'start') { r.status = 'live'; r.startedAt = new Date().toISOString(); r.listeners = users.length; return { room: serializeRoom(r) }; }
     if (action === 'end') { (r as any).status = 'ended'; return { ended: true }; }
     if (action === 'join') {
       if (!isHost && !r.stage.includes(ME)) r.listeners++;
@@ -385,6 +477,7 @@ export async function demoApi(path: string, method: string, body: any): Promise<
     }
     if (action === 'leave') return { left: true };
     if (action === 'hand') { method === 'POST' ? r.hands.push(ME) : (r.hands = r.hands.filter((h) => h !== ME)); return {}; }
+    if (action === 'panel' || action.startsWith('kick/')) return demoLivePanel(r, action, method, body);
     if ((match = action.match(/^speakers\/(\d+)$/))) {
       const id = Number(match[1]);
       if (method === 'POST') {

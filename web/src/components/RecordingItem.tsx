@@ -3,7 +3,7 @@ import { api, timeAgo, type Recording } from '../api';
 import Icon from './Icon';
 import { formatDuration } from './VideoPlayer';
 
-// Una registrazione di Piazza: si guarda qui, senza scaricare nulla. Chi conduceva o un amministratore la può cancellare.
+// Una registrazione di Live: si guarda qui, senza scaricare nulla. Chi conduceva o un amministratore la può cancellare.
 export default function RecordingItem({ rec, canDelete, onDeleted, showTitle = true }: { rec: Recording; canDelete: boolean; onDeleted: (id: number) => void; showTitle?: boolean }) {
   const [open, setOpen] = useState(false);
   const remove = async () => {
