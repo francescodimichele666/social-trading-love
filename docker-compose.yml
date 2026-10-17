@@ -27,8 +27,9 @@ services:
       OWNER_EMAIL: ${OWNER_EMAIL:-}
       UPLOAD_DIR: /data/uploads
       # Il server parla a LiveKit dentro Docker; i telefoni usano l'indirizzo pubblico.
-      LIVEKIT_URL: ws://livekit:7880
-      LIVEKIT_PUBLIC_URL: wss://${LIVE_DOMAIN}
+      # Con LiveKit Cloud (quando le porte del router non si aprono) basta scrivere LIVEKIT_CLOUD_URL nel file .env.
+      LIVEKIT_URL: ${LIVEKIT_CLOUD_URL:-ws://livekit:7880}
+      LIVEKIT_PUBLIC_URL: ${LIVEKIT_CLOUD_URL:-wss://${LIVE_DOMAIN}}
       LIVEKIT_API_KEY: ${LIVEKIT_API_KEY}
       LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET}
       PUBLIC_URL: https://${DOMAIN}
