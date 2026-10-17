@@ -367,6 +367,10 @@ export async function demoApi(path: string, method: string, body: any): Promise<
     const leaderboard = [[2, 4], [1, 2], [4, 1]].map(([id, active], i) => ({ rank: i + 1, ...brief(user(id)), active, isMe: id === ME }));
     return { code: 'K7PQ2MXA', joined: friends.length, active: friends.filter((f) => f.active).length, friends, leaderboard };
   }
+  if (route === '/public/overview') {
+    const up = rooms.filter((r) => r.status !== 'ended').sort((x, y) => Number(y.status === 'live') - Number(x.status === 'live'));
+    return { members: 48, lives: 12, trades: 310, upcoming: up.map((r) => ({ id: r.id, title: r.title, topic: r.topic, live: r.status === 'live', scheduledAt: r.scheduledAt, host: brief(user(r.hostId)) })) };
+  }
   if (route === '/mentors') return { users: users.filter((u) => mentors.has(u.id)).map((u) => ({ ...u, isMentor: true })) };
   if (route === '/hashtags/trending' || route === '/search') {
     const count = new Map<string, number>();

@@ -19,6 +19,7 @@ La comunità gratuita del trading responsabile: post, video, Live con fino a 6 p
 - Feed onesto: prima chi segui, poi la comunità, poi "Hai visto tutto per oggi".
 - Live: video e audio, fino a 6 persone sul palco, il pubblico alza la mano, chi conduce fa salire e scendere, chat.
 - Pannello di chi conduce la Live: collegati ora, picco, entrati in tutto, palco, mani alzate, durata; fai uscire (solo da quella Live) o blocca (da tutte le Live di chi conduce), con ripensamento.
+- Pagina di presentazione per chi non è iscritto (cosa trovi, come funziona, prossime Live, regole, domande frequenti), con anteprima curata per i link condivisi su WhatsApp/Telegram.
 - Ricerca di persone, post e #hashtag (gli hashtag nei post sono cliccabili), argomenti della settimana.
 - Badge Mentore per i membri esperti, assegnato da proprietario e amministratori; elenco dei Mentori nella pagina Cerca.
 - Porta un amico: condivisione su WhatsApp e Telegram, codice QR e classifica del mese (contano solo gli amici attivi).

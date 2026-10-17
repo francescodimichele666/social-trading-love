@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /$
+Allow: /regole
+Allow: /privacy
+Allow: /condizioni
+Disallow: /

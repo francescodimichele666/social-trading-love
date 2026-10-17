@@ -744,3 +744,13 @@ test('inviti: classifica del mese con gli amici attivi', async () => {
   assert.equal(inv.body.leaderboard[0].rank, 1);
   assert.ok(code);
 });
+
+test('pagina di presentazione: numeri e prossime Live senza accesso', async () => {
+  await call('POST', '/api/rooms', anna, { title: 'Domande per chi inizia', scheduledAt: new Date(Date.now() + 86400000).toISOString() });
+  const res = await raw('GET', '/api/public/overview');
+  assert.equal(res.status, 200);
+  assert.ok(res.body.members > 3);
+  const item = res.body.upcoming.find((r: any) => r.title === 'Domande per chi inizia');
+  assert.equal(item.host.displayName, 'ANNA');
+  assert.equal(JSON.stringify(res.body).includes('@example.com'), false, 'nessuna email');
+});

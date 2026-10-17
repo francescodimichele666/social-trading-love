@@ -33,6 +33,26 @@ export function publicUser(u: any) {
 }
 
 export default async function authRoutes(app: FastifyInstance) {
+  // Dati pubblici per la pagina di presentazione (chi non è iscritto): nessun dato personale oltre al nome di chi conduce.
+  app.get('/public/overview', async () => {
+    const n = await one(
+      `SELECT (SELECT count(*)::int FROM users WHERE deleted_at IS NULL AND banned_at IS NULL) AS members,
+              (SELECT count(*)::int FROM rooms WHERE started_at IS NOT NULL AND removed_at IS NULL) AS lives,
+              (SELECT count(*)::int FROM trades) AS trades`,
+    );
+    const { rows } = await query(
+      `SELECT r.id, r.title, r.topic, r.status, r.scheduled_at, u.display_name, u.avatar_url
+       FROM rooms r JOIN users u ON u.id = r.host_id
+       WHERE r.removed_at IS NULL AND u.banned_at IS NULL
+         AND (r.status = 'live' OR (r.status = 'scheduled' AND r.scheduled_at > now() - interval '1 hour'))
+       ORDER BY (r.status = 'live') DESC, r.scheduled_at LIMIT 4`,
+    );
+    return {
+      members: n.members, lives: n.lives, trades: n.trades,
+      upcoming: rows.map((r) => ({ id: r.id, title: r.title, topic: r.topic, live: r.status === 'live', scheduledAt: r.scheduled_at, host: { displayName: r.display_name, avatarUrl: r.avatar_url } })),
+    };
+  });
+
   app.get('/rules', async () => {
     const count = await one<{ n: number }>('SELECT count(*)::int AS n FROM users');
     return { version: RULES_VERSION, rules: RULES, firstUser: (count?.n ?? 0) === 0 };
