@@ -375,6 +375,23 @@ export async function demoApi(path: string, method: string, body: any): Promise<
     const u = users.find((x) => x.username === match![1]);
     return { posts: posts.filter((p) => p.authorId === u?.id && visible(p)).map(serializePost), nextPage: null };
   }
+  if ((match = m(/^\/users\/([a-z0-9_]+)\/connections$/))) {
+    const u = users.find((x) => x.username === match![1]);
+    if (!u) throw new DemoError(404, 'Utente non trovato');
+    // Nell'anteprima tutti seguono Francesco; lui segue chi c'è in `following`.
+    const follows = (a: number, b: number) => (a === ME ? following.has(b) : b === ME);
+    const others = users.filter((x) => x.id !== u.id);
+    const lists = {
+      seguiti: others.filter((x) => follows(u.id, x.id)),
+      follower: others.filter((x) => follows(x.id, u.id)),
+      amici: others.filter((x) => follows(u.id, x.id) && follows(x.id, u.id)),
+    };
+    const tipo = (['amici', 'seguiti', 'follower'].includes(params.get('tipo') ?? '') ? params.get('tipo') : 'amici') as keyof typeof lists;
+    return {
+      tipo, counts: { amici: lists.amici.length, seguiti: lists.seguiti.length, follower: lists.follower.length },
+      users: lists[tipo].map((x) => ({ ...x, isMentor: mentors.has(x.id), isFollowing: follows(ME, x.id), followsMe: follows(x.id, ME), isMe: x.id === ME })),
+    };
+  }
   if ((match = m(/^\/users\/([a-z0-9_]+)\/follow$/))) {
     const u = users.find((x) => x.username === match![1])!;
     method === 'POST' ? following.add(u.id) : following.delete(u.id);
@@ -383,8 +400,8 @@ export async function demoApi(path: string, method: string, body: any): Promise<
   if ((match = m(/^\/users\/([a-z0-9_]+)$/))) {
     const u = users.find((x) => x.username === match![1]);
     if (!u) throw new DemoError(404, 'Utente non trovato');
-    const followers = u.id === ME ? 3 : following.has(u.id) ? 2 : 1;
-    return { user: { ...u, isMentor: mentors.has(u.id) }, followers, following: u.id === ME ? following.size : 2, posts: posts.filter((p) => p.authorId === u.id).length, isFollowing: following.has(u.id), isMe: u.id === ME,
+    const followers = u.id === ME ? users.length - 1 : following.has(u.id) ? 1 : 0;
+    return { user: { ...u, isMentor: mentors.has(u.id) }, followers, following: u.id === ME ? following.size : 1, posts: posts.filter((p) => p.authorId === u.id).length, isFollowing: following.has(u.id), isMe: u.id === ME,
       badges: badges.filter((b) => b.userId === u.id).map(({ id, title, emoji, awardedAt }) => ({ id, title, emoji, awardedAt })) };
   }
   if (route === '/me/avatar') {

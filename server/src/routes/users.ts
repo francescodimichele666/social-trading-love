@@ -27,6 +27,35 @@ export default async function userRoutes(app: FastifyInstance) {
     };
   });
 
+  // Amici (vi seguite a vicenda), persone seguite e follower di un profilo.
+  app.get<{ Params: { username: string }; Querystring: { tipo?: string } }>('/users/:username/connections', async (req) => {
+    const u = await one('SELECT id FROM users WHERE username = $1 AND banned_at IS NULL', [req.params.username.toLowerCase()]);
+    if (!u) throw new HttpError(404, 'Utente non trovato');
+    const tipo = z.enum(['amici', 'seguiti', 'follower']).catch('amici').parse(req.query.tipo);
+    const filter = {
+      amici: `u.id IN (SELECT followed_id FROM follows WHERE follower_id = $1) AND u.id IN (SELECT follower_id FROM follows WHERE followed_id = $1)`,
+      seguiti: `u.id IN (SELECT followed_id FROM follows WHERE follower_id = $1)`,
+      follower: `u.id IN (SELECT follower_id FROM follows WHERE followed_id = $1)`,
+    }[tipo];
+    const { rows } = await query(
+      `SELECT u.*, EXISTS (SELECT 1 FROM follows WHERE follower_id = $2 AND followed_id = u.id) AS i_follow,
+              EXISTS (SELECT 1 FROM follows WHERE follower_id = u.id AND followed_id = $2) AS follows_me
+       FROM users u WHERE u.banned_at IS NULL AND ${filter}
+       ORDER BY lower(u.display_name) LIMIT 500`,
+      [u.id, req.user.id],
+    );
+    const counts = await one(
+      `SELECT (SELECT count(*)::int FROM follows a JOIN follows b ON b.follower_id = a.followed_id AND b.followed_id = a.follower_id WHERE a.follower_id = $1) AS amici,
+              (SELECT count(*)::int FROM follows WHERE follower_id = $1) AS seguiti,
+              (SELECT count(*)::int FROM follows WHERE followed_id = $1) AS follower`,
+      [u.id],
+    );
+    return {
+      tipo, counts,
+      users: rows.map((r) => ({ ...publicUser(r), isFollowing: r.i_follow, followsMe: r.follows_me, isMe: r.id === req.user.id })),
+    };
+  });
+
   app.patch('/me', async (req) => {
     const data = z.object({
       displayName: z.string().trim().min(1).max(50).optional(),

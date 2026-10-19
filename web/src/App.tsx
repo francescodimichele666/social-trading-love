@@ -31,6 +31,7 @@ const RoomPage = lazy(() => import('./pages/RoomPage'));
 import Videos from './pages/Videos';
 import Messages from './pages/Messages';
 import Chat from './pages/Chat';
+import Friends from './pages/Friends';
 
 function OldRoomLink() {
   const { id } = useParams();
@@ -76,6 +77,7 @@ export default function App() {
           <Route path="/" element={<Feed onCompose={() => setCreating(true)} />} />
           <Route path="/post/:id" element={<PostPage />} />
           <Route path="/u/:username" element={<Profile />} />
+          <Route path="/u/:username/amici" element={<Friends />} />
           <Route path="/live" element={<Rooms />} />
           {/* Le "Piazze" ora si chiamano "Live": i vecchi link continuano a funzionare. */}
           <Route path="/piazze" element={<Navigate to="/live" replace />} />

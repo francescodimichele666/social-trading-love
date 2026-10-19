@@ -93,11 +93,12 @@ export default function Profile() {
           </div>
         )}
         <div className="stats">
-          <span><b>{data.posts}</b>post</span><span><b>{data.followers}</b>follower</span><span><b>{data.following}</b>seguiti</span>
+          <span><b>{data.posts}</b>post</span><Link to={`/u/${u.username}/amici?tipo=follower`}><b>{data.followers}</b>follower</Link><Link to={`/u/${u.username}/amici?tipo=seguiti`}><b>{data.following}</b>seguiti</Link>
         </div>
         {data.isMe ? (
           <div className="row center-row">
             <button className="btn ghost" onClick={() => setEditing(!editing)}><Icon name="edit" size={18} /> Modifica</button>
+            <Link className="btn ghost" to={`/u/${u.username}/amici`}><Icon name="users" size={18} /> I miei amici</Link>
             <Link className="btn ghost" to="/diario"><Icon name="trend" size={18} /> Il mio diario</Link>
             <Link className="btn" to="/inviti"><Icon name="gift" size={18} /> Porta un amico</Link>
           </div>

@@ -818,3 +818,21 @@ test('video a tutto schermo e messaggi privati con blocco', async () => {
   assert.equal((await call('POST', '/api/messages/mia', m, { body: 'a me stessa' })).status, 400);
   assert.ok((await call('GET', '/api/me/export', l)).body.messages.length >= 3);
 });
+
+test('lista amici, seguiti e follower', async () => {
+  const g = (await call('POST', '/api/register', undefined, person('gaia'))).body.token;
+  const d = (await call('POST', '/api/register', undefined, person('dino'))).body.token;
+  await call('POST', '/api/register', undefined, person('elio'));
+  await call('POST', '/api/users/dino/follow', g);
+  await call('POST', '/api/users/elio/follow', g);
+  await call('POST', '/api/users/gaia/follow', d);
+  const amici = await call('GET', '/api/users/gaia/connections?tipo=amici', g);
+  assert.deepEqual(amici.body.users.map((u: any) => u.username), ['dino']);
+  assert.deepEqual(amici.body.counts, { amici: 1, seguiti: 2, follower: 1 });
+  const seguiti = await call('GET', '/api/users/gaia/connections?tipo=seguiti', g);
+  assert.equal(seguiti.body.users.length, 2);
+  assert.equal(seguiti.body.users.find((u: any) => u.username === 'elio').followsMe, false);
+  const follower = await call('GET', '/api/users/gaia/connections?tipo=follower', d);
+  assert.equal(follower.body.users[0].username, 'dino');
+  assert.equal(follower.body.users[0].isMe, true);
+});

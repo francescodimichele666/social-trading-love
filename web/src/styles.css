@@ -259,7 +259,9 @@ label.check input { width: 20px; height: 20px; margin-top: 2px; accent-color: va
 .profile-head h1 { margin: 6px 0 0; font-size: 1.7rem; }
 .profile-head p { margin: 0; max-width: 40ch; }
 .stats { display: grid; grid-template-columns: repeat(3, 1fr); width: 100%; max-width: 360px; margin: 10px 0; padding: 12px 0; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); }
-.stats span { display: grid; font-size: 0.78rem; color: var(--muted); font-weight: 600; }
+.stats a { border-radius: 12px; }
+.stats a:hover { background: var(--surface-2); }
+.stats > * { display: grid; font-size: 0.78rem; color: var(--muted); font-weight: 600; }
 .stats b { font-family: var(--display); font-size: 1.35rem; color: var(--text); font-variant-numeric: tabular-nums; }
 .role-box { width: 100%; text-align: left; margin-top: 8px; }
 
@@ -740,3 +742,11 @@ body.no-scroll { overflow: hidden; }
 .live-composer input { flex: 1; border-radius: 22px; padding: 10px 16px; }
 .heart-btn { flex: none; width: 46px; height: 46px; border-radius: 50%; border: 0; background: var(--grad-warm); color: #fff; display: grid; place-items: center; cursor: pointer; transition: transform 0.1s; }
 .heart-btn:active { transform: scale(0.88); }
+
+/* Lista amici */
+.friends-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; margin-top: 12px; }
+.friends-list .list-row { padding: 10px 12px; min-width: 0; gap: 8px; }
+.friend-main { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; color: inherit; }
+.friend-main > span { min-width: 0; }
+.friend-main strong, .friend-main small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.friends-list .btn.small { white-space: nowrap; }
