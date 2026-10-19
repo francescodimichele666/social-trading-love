@@ -19,7 +19,7 @@ function serializeRoom(r: any) {
     id: r.id, title: r.title, description: r.description, topic: r.topic, status: r.status,
     scheduledAt: r.scheduled_at, startedAt: r.started_at, endedAt: r.ended_at,
     host: { id: r.host_id, username: r.username, displayName: r.display_name, avatarUrl: r.avatar_url },
-    listeners: r.listeners ?? 0, record: r.record,
+    listeners: r.listeners ?? 0, record: r.record, chartSymbol: r.chart_symbol ?? null,
   };
 }
 
@@ -142,6 +142,18 @@ export default async function roomRoutes(app: FastifyInstance) {
     await query(`UPDATE rooms SET status = 'live', started_at = now() WHERE id = $1`, [room.id]);
     await notifyFollowers(req.user.id, req.user.username, room.id, room.title);
     if (room.record) await startRecording(room.id);
+    return { room: serializeRoom(await getRoom(room.id)) };
+  });
+
+  // Chi conduce sceglie lo strumento da mostrare a tutti (vuoto = nessun grafico).
+  app.put<{ Params: { id: string } }>('/rooms/:id/chart', async (req) => {
+    const { symbol } = z.object({
+      symbol: z.string().trim().max(30).regex(/^[A-Za-z0-9.!:_/&\- ]*$/, 'Simbolo non valido').nullable(),
+    }).parse(req.body);
+    const room = await getRoom(Number(req.params.id));
+    if (room.host_id !== req.user.id) throw new HttpError(403, 'Solo chi conduce la Live può scegliere il grafico');
+    if (room.status === 'ended') throw new HttpError(400, 'La Live è finita');
+    await query('UPDATE rooms SET chart_symbol = $2 WHERE id = $1', [room.id, symbol ? symbol.toUpperCase() : null]);
     return { room: serializeRoom(await getRoom(room.id)) };
   });
 

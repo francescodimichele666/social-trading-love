@@ -58,7 +58,8 @@ export function Privacy() {
 
       <h2>Dove sono i dati e chi li vede</h2>
       <p>I dati sono salvati sul server del titolare, in Italia. Quello che pubblichi lo vedono gli altri membri della comunità. Moderatori e amministratori vedono le segnalazioni per poter decidere.</p>
-      <p>Per funzionare usiamo solo due passaggi esterni. Le email partono dalla casella di posta del titolare, attraverso il suo fornitore di posta. Le notifiche sul telefono passano dal servizio di notifiche del tuo telefono o browser (Apple, Google o Mozilla), che riceve un messaggio cifrato.</p>
+      <p>Per funzionare usiamo pochi servizi esterni. Le email partono dalla casella di posta del titolare, attraverso il suo fornitore di posta. Le notifiche sul telefono passano dal servizio di notifiche del tuo telefono o browser (Apple, Google o Mozilla), che riceve un messaggio cifrato. Il video e l'audio delle Live passano da LiveKit Cloud, con server in Europa.</p>
+      <p>I grafici dei mercati sono widget gratuiti di TradingView. Si caricano dai server di TradingView solo dopo che tocchi "Vedi il grafico": da quel momento TradingView riceve il tuo indirizzo IP e i dati tecnici del browser, e può usare i propri cookie secondo la sua informativa (<a href="https://www.tradingview.com/privacy-policy/" target="_blank" rel="noreferrer">tradingview.com/privacy-policy</a>). Il tuo sì resta salvato solo nel tuo browser. Se non tocchi mai un grafico, a TradingView non arriva nulla.</p>
 
       <h2>Per quanto tempo</h2>
       <p>Finché il tuo account è attivo. Se lo elimini, i tuoi contenuti e i tuoi dati personali vengono cancellati subito. Le copie di sicurezza si cancellano da sole entro 14 giorni. Resta solo un registro anonimo delle decisioni di moderazione già prese, per gestire eventuali contestazioni.</p>
@@ -75,7 +76,7 @@ export function Privacy() {
       <p>La comunità è riservata a chi ha almeno 18 anni. Se scopriamo un account di un minorenne, lo chiudiamo.</p>
 
       <h2>Cookie</h2>
-      <p>Non usiamo cookie di profilazione o di terze parti. Il sito salva nel tuo browser solo il codice che ti tiene collegato, che è indispensabile al funzionamento: per questo non ti chiediamo il consenso ai cookie.</p>
+      <p>Non usiamo cookie di profilazione. Il sito salva nel tuo browser solo il codice che ti tiene collegato, che è indispensabile al funzionamento. Gli unici contenuti di terze parti sono i grafici di TradingView, che si aprono solo se li tocchi tu.</p>
 
       <p className="muted small">Vedi anche le <Link to="/condizioni">condizioni d'uso</Link> e le <Link to="/regole">regole della comunità</Link>.</p>
     </Page>

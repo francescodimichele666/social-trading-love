@@ -1,4 +1,5 @@
 import type { Trade } from '../api';
+import TvChart from './TvChart';
 
 export const MARKET_LABELS: Record<string, string> = {
   azioni: 'Azioni', etf: 'ETF', forex: 'Forex', materie_prime: 'Materie prime', indici: 'Indici', crypto: 'Crypto', altro: 'Altro',
@@ -71,6 +72,7 @@ export default function TradeCard({ trade: t, compact = false }: { trade: Trade;
       </div>
       {!compact && t.plan && <p className="trade-text"><small>Il piano</small>{t.plan}</p>}
       {!compact && t.lesson && <p className="trade-text lesson"><small>Cosa ho imparato</small>{t.lesson}</p>}
+      {!compact && <TvChart symbol={t.symbol} market={t.market} />}
     </div>
   );
 }

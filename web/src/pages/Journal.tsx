@@ -83,7 +83,7 @@ function NewTrade({ onSaved, onCancel }: { onSaved: (warning: string | null, pos
         <button type="button" className={f.direction === 'short' ? 'on bad' : ''} onClick={() => setF({ ...f, direction: 'short' })}>▼ Vendita</button>
       </div>
       <div className="grid-2">
-        <label>Strumento<input value={f.symbol} onChange={(e) => setF({ ...f, symbol: e.target.value })} required maxLength={30} placeholder="Es. ENI, EURUSD" /></label>
+        <label>Strumento<input value={f.symbol} onChange={(e) => setF({ ...f, symbol: e.target.value })} required maxLength={30} placeholder="Es. EURUSD, oro, AAPL, MIL:ENI" /></label>
         <label>Mercato
           <select value={f.market} onChange={(e) => setF({ ...f, market: e.target.value })}>
             {Object.entries(MARKET_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}

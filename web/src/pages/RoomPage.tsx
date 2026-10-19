@@ -9,6 +9,7 @@ import Avatar from '../components/Avatar';
 import Icon from '../components/Icon';
 import ReportButton from '../components/ReportButton';
 import LivePanel from '../components/LivePanel';
+import TvChart from '../components/TvChart';
 import { useAuth } from '../auth';
 
 type Person = { id: number; username: string; displayName: string; avatarUrl: string | null; role: string };
@@ -169,6 +170,10 @@ export default function RoomPage() {
         </LiveKitRoom>
       )}
 
+      {room.status === 'live' && !me.removed && (me.isHost || room.chartSymbol) && (
+        <LiveChart roomId={room.id} symbol={room.chartSymbol ?? null} isHost={me.isHost} onChange={load} />
+      )}
+
       {room.status === 'live' && !me.removed && (
         <footer className="room-actions">
           {conn?.token !== 'demo' && <button className="btn ghost" onClick={() => setShowChat(!showChat)}>{showChat ? 'Nascondi chat' : <><Icon name="chat" size={18} /> Chat</>}</button>}
@@ -182,5 +187,34 @@ export default function RoomPage() {
 
       {me.isHost && room.status === 'live' && <LivePanel roomId={room.id} maxOnStage={info.maxOnStage} onChange={load} />}
     </div>
+  );
+}
+
+// Il grafico TradingView dello strumento di cui si parla: lo sceglie chi conduce, lo vedono tutti.
+function LiveChart({ roomId, symbol, isHost, onChange }: { roomId: number; symbol: string | null; isHost: boolean; onChange: () => void }) {
+  const [draft, setDraft] = useState('');
+  const [error, setError] = useState('');
+  const save = async (value: string | null) => {
+    setError('');
+    try {
+      await api(`/rooms/${roomId}/chart`, { method: 'PUT', body: { symbol: value } });
+      setDraft('');
+      onChange();
+    } catch (e: any) {
+      setError(e.message);
+    }
+  };
+  return (
+    <section className="live-chart">
+      {isHost && (
+        <form className="row live-chart-form" onSubmit={(e) => { e.preventDefault(); if (draft.trim()) save(draft.trim()); }}>
+          <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={symbol ? `Grafico: ${symbol}. Cambia (es. EURUSD, oro, AAPL)` : 'Mostra un grafico a tutti (es. EURUSD, oro, AAPL)'} maxLength={30} />
+          <button className="btn small" disabled={!draft.trim()}>Mostra</button>
+          {symbol && <button type="button" className="btn small ghost" onClick={() => save(null)}>Togli</button>}
+        </form>
+      )}
+      {error && <p className="error">{error}</p>}
+      {symbol && <TvChart key={symbol} symbol={symbol} auto height={380} />}
+    </section>
   );
 }

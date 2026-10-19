@@ -197,6 +197,13 @@ test('Live: palco, mano alzata, limite di 6 persone', async () => {
   await call('POST', '/api/users/anna/follow', admin);
   assert.equal((await call('POST', `/api/rooms/${id}/start`, admin)).status, 403);
   assert.equal((await call('POST', `/api/rooms/${id}/start`, anna)).status, 200);
+
+  // Chi conduce sceglie il grafico da mostrare a tutti; gli altri no.
+  assert.equal((await call('PUT', `/api/rooms/${id}/chart`, admin, { symbol: 'EURUSD' })).status, 403);
+  assert.equal((await call('PUT', `/api/rooms/${id}/chart`, anna, { symbol: '<script>' })).status, 400);
+  assert.equal((await call('PUT', `/api/rooms/${id}/chart`, anna, { symbol: 'eur/usd' })).body.room.chartSymbol, 'EUR/USD');
+  assert.equal((await call('GET', `/api/rooms/${id}`, admin)).body.room.chartSymbol, 'EUR/USD');
+  assert.equal((await call('PUT', `/api/rooms/${id}/chart`, anna, { symbol: null })).body.room.chartSymbol, null);
   const notes = await call('GET', '/api/notifications', admin);
   assert.ok(notes.body.notifications.some((n: any) => n.kind === 'room_live'));
 

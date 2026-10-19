@@ -30,18 +30,18 @@ const following = new Set([2, 3]);
 let nextId = 100;
 type DemoComment = { id: number; authorId: number; body: string; createdAt: string };
 type DemoPost = { id: number; authorId: number; body: string; mediaUrl: string | null; mediaType: 'image' | 'video' | null; mediaPoster?: string; mediaDuration?: number; createdAt: string; likes: Set<number>; comments: DemoComment[]; flagged?: boolean; tradeId?: number };
-type DemoRoom = { id: number; hostId: number; title: string; description: string; topic: string; status: 'scheduled' | 'live' | 'ended'; scheduledAt: string; startedAt: string | null; stage: number[]; hands: number[]; listeners: number; record?: boolean };
+type DemoRoom = { id: number; hostId: number; title: string; description: string; topic: string; status: 'scheduled' | 'live' | 'ended'; scheduledAt: string; startedAt: string | null; stage: number[]; hands: number[]; listeners: number; record?: boolean; chartSymbol?: string | null };
 const posts: DemoPost[] = [
   { id: 6, authorId: 2, body: 'Dal mio diario: chiusa in guadagno, ma sono uscita prima dell\'obiettivo per paura. Voi lasciate lavorare il piano fino in fondo? #diario #psicologia', mediaUrl: null, mediaType: null, tradeId: 5, createdAt: ago(55), likes: new Set<number>([1, 3, 4]), comments: [{ id: 3, authorId: 3, body: 'Succede anche a me! Però +2 R resta un ottimo risultato.', createdAt: ago(40) }] },
   { id: 5, authorId: 2, body: 'Primo video! Come decido lo stop loss prima di entrare, e perché non lo sposto mai. Ditemi come fate voi 👇 #stoploss', mediaUrl: demoVideo, mediaType: 'video' as const, mediaPoster: demoPoster, mediaDuration: 9, createdAt: ago(12), likes: new Set<number>([3, 4]), comments: [{ id: 2, authorId: 4, body: 'Chiarissimo, grazie Giulia!', createdAt: ago(6) }] },
   { id: 1, authorId: 2, body: 'Operazione chiusa in perdita (-0,8%). Ho rispettato lo stop loss senza spostarlo: per me oggi è una vittoria. Il grafico con il punto di uscita 👇 #stoploss #disciplina', mediaUrl: chart('#2dd4bf', '0,60 60,80 120,70 180,110 240,130 300,155 340,160'), mediaType: 'image' as const, createdAt: ago(35), likes: new Set<number>([1, 3]), comments: [{ id: 1, authorId: 3, body: 'Rispetto! Io lo spostavo sempre e perdevo il doppio.', createdAt: ago(20) }] },
-  { id: 2, authorId: 3, body: 'Domanda per chi ha più esperienza: come gestite la voglia di "rifarvi" dopo una perdita? Stasera ne parliamo nella Live di @giulia? #psicologia', mediaUrl: null, mediaType: null, createdAt: ago(80), likes: new Set([2]), comments: [] },
+  { id: 2, authorId: 3, body: 'Domanda per chi ha più esperienza: come gestite la voglia di "rifarvi" dopo una perdita? Stasera ne parliamo nella Live di @giulia? Intanto guardo $EURUSD #psicologia', mediaUrl: null, mediaType: null, createdAt: ago(80), likes: new Set([2]), comments: [] },
   { id: 3, authorId: 1, body: 'Benvenuti nella comunità! Regola numero uno: mai rischiare più dell\'1% del capitale su una singola operazione. Raccontate anche gli errori: è così che si impara.', mediaUrl: null, mediaType: null, createdAt: ago(300), likes: new Set([2, 3, 4]), comments: [] },
   { id: 4, authorId: 4, body: 'Piano di accumulo su ETF mondiale: 18 mesi, zero operazioni impulsive. Noioso? Sì. Funziona? Per me sì. #ETF #lungoperiodo', mediaUrl: chart('#a78bfa', '0,170 60,160 120,150 180,140 240,120 300,100 360,80 400,70'), mediaType: 'image' as const, createdAt: ago(600), likes: new Set([1]), comments: [] },
 ];
 
 const rooms: DemoRoom[] = [
-  { id: 1, hostId: 2, title: 'Gestire le perdite senza farsi male', description: 'Chiacchierata aperta: raccontiamo come reagiamo dopo una perdita. Alzate la mano per intervenire.', topic: 'psicologia', status: 'live' as const, scheduledAt: ago(25), startedAt: ago(25), stage: [2, 3], hands: [4], listeners: 14, record: true },
+  { id: 1, hostId: 2, title: 'Gestire le perdite senza farsi male', description: 'Chiacchierata aperta: raccontiamo come reagiamo dopo una perdita. Alzate la mano per intervenire.', topic: 'psicologia', status: 'live' as const, scheduledAt: ago(25), startedAt: ago(25), stage: [2, 3], hands: [4], listeners: 14, record: true, chartSymbol: 'EURUSD' },
   { id: 2, hostId: 1, title: 'Come si calcola la size di una posizione', description: 'Esempi pratici con numeri veri: capitale, rischio per operazione, stop loss.', topic: 'rischio', status: 'scheduled' as const, scheduledAt: new Date(now + 26 * 3600000).toISOString(), startedAt: null, stage: [1], hands: [3], listeners: 0 },
 ];
 
@@ -217,7 +217,7 @@ const serializePost = (p: DemoPost) => ({
 });
 const serializeRoom = (r: DemoRoom) => ({
   id: r.id, title: r.title, description: r.description, topic: r.topic, status: r.status, scheduledAt: r.scheduledAt,
-  startedAt: r.startedAt, host: brief(user(r.hostId)), listeners: r.listeners, record: Boolean(r.record),
+  startedAt: r.startedAt, host: brief(user(r.hostId)), listeners: r.listeners, record: Boolean(r.record), chartSymbol: r.chartSymbol ?? null,
 });
 
 class DemoError extends Error {
@@ -510,6 +510,7 @@ export async function demoApi(path: string, method: string, body: any): Promise<
       return { livekitUrl: '', token: 'demo', role: isHost ? 'host' : r.stage.includes(ME) ? 'speaker' : 'audience' };
     }
     if (action === 'leave') return { left: true };
+    if (action === 'chart') { r.chartSymbol = body?.symbol ? String(body.symbol).toUpperCase() : null; return { room: serializeRoom(r) }; }
     if (action === 'hand') { method === 'POST' ? r.hands.push(ME) : (r.hands = r.hands.filter((h) => h !== ME)); return {}; }
     if (action === 'panel' || action.startsWith('kick/')) return demoLivePanel(r, action, method, body);
     if ((match = action.match(/^speakers\/(\d+)$/))) {
