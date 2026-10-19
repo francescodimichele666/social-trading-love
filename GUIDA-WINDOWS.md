@@ -184,3 +184,13 @@ docker compose logs egress --tail 50
 e mandami quello che esce. La causa più comune è il router che non lascia "rientrare" il PC sul proprio indirizzo pubblico: si risolve con una riga di configurazione.
 
 **Per spegnere le registrazioni del tutto:** apri il file `.env`, scrivi `RECORDINGS=false`, salva e lancia `docker compose up -d`. La casella "Registra la Live" sparisce dall'app.
+
+## Se hai dimenticato la password (anche senza email)
+
+Dal PC del server, in PowerShell dentro la cartella del progetto:
+
+```
+docker compose exec api node dist/reset-password.js tua@email.it
+```
+
+Scrivi la nuova password due volte (mentre scrivi non si vede nulla, è normale) e premi Invio. Tutti gli accessi aperti con la vecchia password vengono chiusi.
