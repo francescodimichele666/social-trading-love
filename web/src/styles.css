@@ -635,11 +635,24 @@ a.tag { cursor: pointer; }
 .tv-snapshot img { width: 100%; border-radius: 16px; border: 1px solid var(--line); background: var(--surface-2); }
 .tv-snapshot small { color: var(--muted); font-size: 0.75rem; }
 .cashtag { background: none; border: 0; padding: 0; cursor: pointer; font: inherit; }
-.live-chart { display: grid; gap: 10px; padding: 0 16px 12px; }
-.live-chart-form { gap: 8px; flex-wrap: wrap; }
-.live-chart-form input { flex: 1 1 200px; width: auto; }
 .tv-tools { display: flex; justify-content: flex-end; }
 .tv-chart.full { position: fixed; inset: 0; z-index: 80; background: var(--ink); padding: calc(10px + env(safe-area-inset-top, 0px)) 10px calc(10px + env(safe-area-inset-bottom, 0px)); grid-template-rows: auto 1fr auto; margin: 0; }
 .tv-chart.full .tradingview-widget-container { height: 100%; }
 body.no-scroll { overflow: hidden; }
-.live-chart-note { margin: 0; }
+
+/* Condividi TradingView nella Live e schermo condiviso in grande. */
+.tv-share { display: grid; gap: 8px; justify-items: center; text-align: center; padding: 10px 16px; margin: 6px 12px; border-radius: 18px; border: 1px solid rgba(52, 227, 196, 0.3); background: rgba(52, 227, 196, 0.06); }
+.tv-share p { margin: 0; }
+.tv-share.on { display: flex; justify-content: space-between; align-items: center; text-align: left; gap: 12px; }
+.tv-share.on span { display: grid; }
+.tv-share.on b { color: var(--teal); }
+.tv-share.on small { color: var(--muted); }
+.tv-share .linkish { background: none; border: 0; color: var(--teal); cursor: pointer; text-decoration: underline; padding: 2px; }
+.tv-share-note { text-align: center; margin: 6px 16px; }
+.stage-with-screen { display: grid; gap: 8px; }
+.screen-view { position: relative; height: min(68vh, 720px); min-height: 260px; background: #000; border-radius: 16px; overflow: hidden; }
+.screen-view .lk-participant-tile { height: 100%; }
+.screen-view video { object-fit: contain !important; }
+.screen-view:fullscreen { height: 100%; border-radius: 0; }
+.screen-full { position: absolute; top: 8px; right: 8px; z-index: 5; background: rgba(7, 11, 22, 0.75); }
+.stage-grid.small { height: 22vh; min-height: 140px; }

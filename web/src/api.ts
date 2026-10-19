@@ -65,7 +65,7 @@ export type Challenge = {
 };
 export type Room = {
   id: number; title: string; description: string; topic: string; status: 'scheduled' | 'live' | 'ended';
-  scheduledAt: string; startedAt: string | null; host: Pick<User, 'id' | 'username' | 'displayName' | 'avatarUrl'>; listeners: number; record?: boolean; chartSymbol?: string | null;
+  scheduledAt: string; startedAt: string | null; host: Pick<User, 'id' | 'username' | 'displayName' | 'avatarUrl'>; listeners: number; record?: boolean;
 };
 
 export function timeAgo(iso: string): string {

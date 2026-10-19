@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Chat, ControlBar, GridLayout, LiveKitRoom, ParticipantTile, RoomAudioRenderer, useTracks } from '@livekit/components-react';
+import type { TrackReference } from '@livekit/components-react';
 import { Track } from 'livekit-client';
 import '@livekit/components-styles';
 import { api, type Recording, type Room } from '../api';
@@ -9,7 +10,7 @@ import Avatar from '../components/Avatar';
 import Icon from '../components/Icon';
 import ReportButton from '../components/ReportButton';
 import LivePanel from '../components/LivePanel';
-import TvChart from '../components/TvChart';
+import ShareTradingView from '../components/ShareTradingView';
 import { useAuth } from '../auth';
 
 type Person = { id: number; username: string; displayName: string; avatarUrl: string | null; role: string };
@@ -17,14 +18,44 @@ type Info = { room: Room; stage: Person[]; raisedHands: Person[]; me: { role: st
 type Conn = { token: string; livekitUrl: string; role: string };
 
 // Mostra solo chi è sul palco (chi può trasmettere), non tutto il pubblico.
+// Se qualcuno condivide lo schermo (per esempio TradingView), quello va in grande e le videocamere sotto.
 function Stage() {
   const tracks = useTracks([{ source: Track.Source.Camera, withPlaceholder: true }, { source: Track.Source.ScreenShare, withPlaceholder: false }], { onlySubscribed: false });
   const onStage = tracks.filter((t) => t.participant.permissions?.canPublish);
   if (onStage.length === 0) return <div className="stage-empty">In attesa che qualcuno salga sul palco…</div>;
+  const screen = onStage.find((t) => t.source === Track.Source.ScreenShare && t.publication) as TrackReference | undefined;
+  if (!screen) {
+    return (
+      <GridLayout tracks={onStage} className="stage-grid">
+        <ParticipantTile />
+      </GridLayout>
+    );
+  }
+  const cameras = onStage.filter((t) => t.source === Track.Source.Camera);
   return (
-    <GridLayout tracks={onStage} className="stage-grid">
-      <ParticipantTile />
-    </GridLayout>
+    <div className="stage-with-screen">
+      <ScreenView track={screen} />
+      <GridLayout tracks={cameras} className="stage-grid small">
+        <ParticipantTile />
+      </GridLayout>
+    </div>
+  );
+}
+
+// Lo schermo condiviso, grande, con il pulsante per vederlo a tutto schermo.
+function ScreenView({ track }: { track: TrackReference }) {
+  const box = useRef<HTMLDivElement>(null);
+  const full = () => {
+    const el = box.current as any;
+    if (!el) return;
+    if (document.fullscreenElement) document.exitFullscreen();
+    else (el.requestFullscreen ?? el.webkitRequestFullscreen)?.call(el);
+  };
+  return (
+    <div ref={box} className="screen-view">
+      <ParticipantTile trackRef={track} />
+      <button className="btn small ghost screen-full" onClick={full}><Icon name="expand" size={16} /> Ingrandisci</button>
+    </div>
   );
 }
 
@@ -166,12 +197,9 @@ export default function RoomPage() {
             {showChat && <div className="room-chat"><Chat /></div>}
           </div>
           <RoomAudioRenderer />
+          {canPublish && <ShareTradingView />}
           {canPublish && <ControlBar variation="minimal" controls={{ microphone: true, camera: true, screenShare: true, chat: false, leave: false }} />}
         </LiveKitRoom>
-      )}
-
-      {room.status === 'live' && !me.removed && (me.isHost || room.chartSymbol) && (
-        <LiveChart roomId={room.id} symbol={room.chartSymbol ?? null} isHost={me.isHost} onChange={load} />
       )}
 
       {room.status === 'live' && !me.removed && (
@@ -190,32 +218,3 @@ export default function RoomPage() {
   );
 }
 
-// Il grafico TradingView dello strumento di cui si parla: lo sceglie chi conduce, lo vedono tutti.
-function LiveChart({ roomId, symbol, isHost, onChange }: { roomId: number; symbol: string | null; isHost: boolean; onChange: () => void }) {
-  const [draft, setDraft] = useState('');
-  const [error, setError] = useState('');
-  const save = async (value: string | null) => {
-    setError('');
-    try {
-      await api(`/rooms/${roomId}/chart`, { method: 'PUT', body: { symbol: value } });
-      setDraft('');
-      onChange();
-    } catch (e: any) {
-      setError(e.message);
-    }
-  };
-  return (
-    <section className="live-chart">
-      {isHost && (
-        <form className="row live-chart-form" onSubmit={(e) => { e.preventDefault(); if (draft.trim()) save(draft.trim()); }}>
-          <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={symbol ? `Grafico: ${symbol}. Cambia (es. EURUSD, oro, AAPL)` : 'Mostra un grafico a tutti (es. EURUSD, oro, AAPL)'} maxLength={30} />
-          <button className="btn small" disabled={!draft.trim()}>Mostra</button>
-          {symbol && <button type="button" className="btn small ghost" onClick={() => save(null)}>Togli</button>}
-        </form>
-      )}
-      {error && <p className="error">{error}</p>}
-      {symbol && <p className="muted small live-chart-note">{isHost ? `Tutti i presenti vedono il grafico di ${symbol}. Ognuno può ingrandirlo o cambiare il periodo sul proprio schermo.` : `Grafico scelto da chi conduce: ${symbol}`}</p>}
-      {symbol && <TvChart key={symbol} symbol={symbol} auto height="min(62vh, 560px)" />}
-    </section>
-  );
-}
