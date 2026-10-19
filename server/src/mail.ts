@@ -5,7 +5,7 @@ import { decrypt, getSetting, type MailSettings } from './settings.js';
 // Le email partono dalla casella del proprietario (Gmail, Libero, Aruba…), impostata dall'app.
 // Nessun servizio esterno: il server si collega direttamente al server di posta della casella.
 
-export type Mail = { to: string; subject: string; text: string };
+export type Mail = { to: string; subject: string; text: string; html?: string };
 
 // Nei test le email non partono: finiscono qui.
 export const sentMails: Mail[] = [];
@@ -37,6 +37,7 @@ export async function sendMail(mail: Mail, override?: MailSettings) {
       to: mail.to,
       subject: mail.subject,
       text: mail.text,
+      ...(mail.html ? { html: mail.html } : {}),
     });
   } catch (err: any) {
     const why = err?.responseCode === 535 || /auth/i.test(String(err?.message))

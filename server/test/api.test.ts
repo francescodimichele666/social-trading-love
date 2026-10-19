@@ -836,3 +836,24 @@ test('lista amici, seguiti e follower', async () => {
   assert.equal(follower.body.users[0].username, 'dino');
   assert.equal(follower.body.users[0].isMe, true);
 });
+
+test("link della password: usa l'indirizzo da cui si è chiesto, anche con DOMAIN sbagliato", async () => {
+  const { publicUrl } = await import('../src/routes/account.js');
+  const { config } = await import('../src/config.js');
+  const req = (headers: Record<string, string>) => ({ headers }) as any;
+  const saved = config.publicUrl;
+  try {
+    config.publicUrl = 'https://:80';
+    assert.equal(publicUrl(req({ host: 'love.example.org', origin: 'https://love.example.org' })), 'https://love.example.org');
+    assert.equal(publicUrl(req({ host: 'love.example.org' })), 'https://love.example.org');
+    assert.equal(publicUrl(req({ host: 'love.example.org', origin: 'https://cattivo.example' })), 'https://love.example.org', 'origine diversa: ignorata');
+    config.publicUrl = 'https://tradinglove.it';
+    assert.equal(publicUrl(req({ host: 'api:3000' })), 'https://tradinglove.it');
+  } finally {
+    config.publicUrl = saved;
+  }
+  const { sentMails } = await import('../src/mail.js');
+  const m = sentMails.find((x) => /Reimposta/.test(x.subject))!;
+  assert.match(m.text, /token=[0-9a-f]{64}\b/);
+  assert.match(m.html!, /href="[^"]+\/reimposta-password\?token=[0-9a-f]{64}"/);
+});

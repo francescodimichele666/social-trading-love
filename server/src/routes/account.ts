@@ -17,21 +17,45 @@ const password = z.string().min(8, 'almeno 8 caratteri').max(200);
 
 // Manda il link per scegliere una nuova password (usato anche dal pannello utenti degli amministratori).
 export async function sendResetLink(req: FastifyRequest, user: { id: number; email: string; display_name: string }) {
-  const token = randomBytes(32).toString('base64url');
+  // Solo lettere e numeri: alcuni programmi di posta tagliano i link che finiscono con - o _.
+  const token = randomBytes(32).toString('hex');
   await query(`INSERT INTO password_resets (user_id, token_hash, expires_at) VALUES ($1, $2, now() + interval '1 hour')`, [user.id, sha256(token)]);
   const link = `${publicUrl(req)}/reimposta-password?token=${token}`;
   await sendMail({
     to: user.email,
     subject: 'Reimposta la tua password - Love Trading Club',
     text: `Ciao ${user.display_name},\n\nhai chiesto di cambiare la password di Love Trading Club. Apri questo link entro un'ora:\n\n${link}\n\nSe non sei stato tu, ignora questa email: la tua password resta quella di prima.\n\nLove Trading Club`,
+
+    html: `<p>Ciao ${escapeHtml(user.display_name)},</p>
+<p>hai chiesto di cambiare la password di Love Trading Club. Il link vale un'ora.</p>
+<p><a href="${link}" style="display:inline-block;padding:12px 22px;border-radius:12px;background:#ff5c8a;color:#fff;font-weight:700;text-decoration:none">Scegli la nuova password</a></p>
+<p style="color:#666;font-size:13px">Se il pulsante non si apre, copia questo indirizzo nel browser:<br>${link}</p>
+<p style="color:#666;font-size:13px">Se non sei stato tu, ignora questa email: la tua password resta quella di prima.</p>`,
   });
 }
 
-function publicUrl(req: FastifyRequest) {
-  if (config.publicUrl) return config.publicUrl.replace(/\/$/, '');
+// L'indirizzo del sito da mettere nei link delle email.
+// Prima di tutto quello da cui la persona ha chiesto il link (così funziona anche con Cloudflare Tunnel,
+// dove DOMAIN nel .env può essere ":80" o un indirizzo diverso da quello vero).
+export function publicUrl(req: FastifyRequest) {
+  const fwd = req.headers['x-forwarded-host'];
+  const host = (typeof fwd === 'string' && fwd ? fwd.split(',')[0] : req.headers.host ?? '').trim().toLowerCase();
   const origin = req.headers.origin;
-  return typeof origin === 'string' && /^https?:\/\//.test(origin) ? origin : `${req.protocol}://${req.hostname}`;
+  if (typeof origin === 'string') {
+    try {
+      const o = new URL(origin);
+      if (/^https?:$/.test(o.protocol) && o.host.toLowerCase() === host) return o.origin;
+    } catch { /* origine non valida: si passa al resto */ }
+  }
+  try {
+    const u = new URL(config.publicUrl);
+    if (u.hostname && !/^(localhost|127\.|0\.0\.0\.0)/.test(u.hostname)) return u.origin;
+  } catch { /* PUBLIC_URL vuoto o sbagliato (es. "https://:80") */ }
+  const local = /^(localhost|127\.)/.test(host);
+  return `${local ? 'http' : 'https'}://${host || 'localhost'}`;
 }
+
+const escapeHtml = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
 function requireOwner(req: FastifyRequest) {
   if (!req.user.isOwner) throw new HttpError(403, 'Solo il proprietario può cambiare queste impostazioni');

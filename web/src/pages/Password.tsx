@@ -45,7 +45,8 @@ export function ForgotPassword() {
 
 export function ResetPassword() {
   const [params] = useSearchParams();
-  const token = params.get('token') ?? '';
+  // Toglie eventuali caratteri aggiunti dal programma di posta (punto finale, spazi, parentesi).
+  const token = (params.get('token') ?? '').replace(/[^A-Za-z0-9_-]/g, '');
   const [password, setPassword] = useState('');
   const [again, setAgain] = useState('');
   const [msg, setMsg] = useState('');
