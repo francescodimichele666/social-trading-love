@@ -656,3 +656,87 @@ body.no-scroll { overflow: hidden; }
 .screen-view:fullscreen { height: 100%; border-radius: 0; }
 .screen-full { position: absolute; top: 8px; right: 8px; z-index: 5; background: rgba(7, 11, 22, 0.75); }
 .stage-grid.small { height: 22vh; min-height: 140px; }
+
+/* Home: Bacheca / Video */
+.feed-switch { display: flex; gap: 6px; padding: 4px; margin: 10px 0 4px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); width: max-content; }
+.feed-switch > * { display: inline-flex; align-items: center; gap: 6px; padding: 7px 16px; border-radius: 999px; font-weight: 700; font-size: 0.9rem; color: var(--muted); }
+.feed-switch .on { background: var(--surface-3); color: var(--text); }
+.icon-btn.with-badge { position: relative; }
+.icon-btn.with-badge .badge { top: -4px; left: auto; right: -4px; }
+.badge.static { position: static; box-shadow: none; }
+
+/* Video a tutto schermo, uno alla volta */
+.app-reels .content { padding: 0; max-width: none; }
+.reels { position: fixed; inset: 0 0 calc(64px + env(safe-area-inset-bottom, 0px)) 0; overflow-y: auto; scroll-snap-type: y mandatory; background: #000; z-index: 10; overscroll-behavior: contain; scrollbar-width: none; }
+.reels::-webkit-scrollbar { display: none; }
+.reels-top { position: fixed; top: 0; left: 0; right: 0; z-index: 12; display: flex; justify-content: space-between; align-items: center; padding: calc(10px + env(safe-area-inset-top, 0px)) 12px 10px; pointer-events: none; background: linear-gradient(rgba(0,0,0,0.45), transparent); }
+.reels-top > * { pointer-events: auto; }
+.reels-top strong { font-family: var(--display); font-size: 1.1rem; text-shadow: 0 1px 6px rgba(0,0,0,0.6); }
+.icon-btn.floating-dark { background: rgba(0, 0, 0, 0.35); border-color: rgba(255,255,255,0.15); }
+.reel { position: relative; height: 100%; scroll-snap-align: start; scroll-snap-stop: always; display: grid; place-items: center; overflow: hidden; }
+.reel video { width: 100%; height: 100%; object-fit: contain; background: #000; }
+.reel .video-play { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; color: rgba(255,255,255,0.85); }
+.reel-actions { position: absolute; right: 8px; bottom: 90px; display: grid; gap: 16px; justify-items: center; z-index: 2; }
+.reel-avatar { border-radius: 50%; box-shadow: 0 0 0 2px #fff; margin-bottom: 4px; }
+.reel-act { display: grid; justify-items: center; gap: 2px; background: none; border: 0; color: #fff; font-size: 0.75rem; font-weight: 700; cursor: pointer; filter: drop-shadow(0 1px 4px rgba(0,0,0,0.6)); }
+.reel-act.on { color: var(--coral); }
+.reel-info { position: absolute; left: 0; right: 70px; bottom: 0; padding: 40px 14px 18px; background: linear-gradient(transparent, rgba(0,0,0,0.65)); z-index: 1; }
+.reel-author { color: #fff; font-weight: 800; display: inline-flex; gap: 6px; align-items: center; }
+.reel-text p { margin: 6px 0 0; color: #f2f4fb; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.reel-text.open p { -webkit-line-clamp: unset; }
+.reel-progress { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: rgba(255,255,255,0.2); z-index: 2; }
+.reel-progress i { display: block; height: 100%; background: var(--teal); }
+.reel-burst { position: absolute; inset: 0; display: grid; place-items: center; color: var(--coral); pointer-events: none; animation: burst 0.8s ease forwards; }
+@keyframes burst { 0% { transform: scale(0.4); opacity: 0; } 25% { transform: scale(1.1); opacity: 1; } 100% { transform: scale(1.3) translateY(-30px); opacity: 0; } }
+.reel-end { gap: 12px; padding: 24px; text-align: center; align-content: center; background: var(--ink); }
+.reel-end p { max-width: 340px; margin: 0 auto; }
+
+/* Messaggi privati */
+.convo-list { list-style: none; padding: 0; margin: 8px 0; display: grid; gap: 4px; }
+.convo { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; padding: 10px; border-radius: 18px; color: var(--text); }
+.convo:hover { background: var(--surface); }
+.convo-text { display: grid; min-width: 0; }
+.convo-text small { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.convo.unread .convo-text small { color: var(--text); font-weight: 700; }
+.convo-meta { display: grid; justify-items: end; gap: 4px; color: var(--muted); }
+.empty { display: grid; justify-items: center; gap: 10px; text-align: center; padding: 30px 10px; }
+.chat-page { position: fixed; inset: 0; display: grid; grid-template-rows: auto auto 1fr auto auto; max-width: 600px; margin: 0 auto; background: var(--ink); z-index: 15; }
+.chat-head { display: flex; align-items: center; gap: 10px; padding: calc(10px + env(safe-area-inset-top, 0px)) 12px 10px; border-bottom: 1px solid var(--line); }
+.chat-who { flex: 1; display: flex; align-items: center; gap: 10px; color: var(--text); min-width: 0; }
+.chat-who span { display: grid; min-width: 0; }
+.chat-who small { color: var(--muted); }
+.chat-menu { display: flex; gap: 8px; justify-content: flex-end; padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--surface); }
+.chat-scroll { overflow-y: auto; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; }
+.bubble-row { display: flex; flex-direction: column; }
+.chat-time { align-self: center; color: var(--muted); font-size: 0.72rem; margin: 10px 0 4px; }
+.bubble { max-width: 78%; margin: 0; padding: 9px 13px; border-radius: 18px 18px 18px 6px; background: var(--surface-2); white-space: pre-wrap; overflow-wrap: anywhere; align-self: flex-start; }
+.bubble.mine { align-self: flex-end; border-radius: 18px 18px 6px 18px; background: linear-gradient(115deg, rgba(52,227,196,0.9), rgba(155,140,255,0.9)); color: #06101a; font-weight: 600; }
+.seen { align-self: flex-end; color: var(--muted); font-size: 0.72rem; }
+.chat-input { display: flex; gap: 8px; align-items: flex-end; padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--line); }
+.chat-input textarea { min-height: 44px; max-height: 140px; border-radius: 22px; padding: 11px 16px; }
+.send-btn { flex: none; width: 44px; height: 44px; border-radius: 50%; border: 0; background: var(--grad); color: #06101a; display: grid; place-items: center; cursor: pointer; }
+.send-btn:disabled { opacity: 0.4; }
+.chat-error { margin: 0 14px; }
+.chat-closed { padding: 14px 14px calc(14px + env(safe-area-inset-bottom, 0px)); margin: 0; border-top: 1px solid var(--line); }
+.center { text-align: center; }
+
+/* Live: commenti sopra il video e cuori che volano */
+.stage-wrap { position: relative; }
+.live-overlay { position: absolute; inset: 0; pointer-events: none; z-index: 4; }
+.live-comments { position: absolute; left: 10px; bottom: 10px; width: min(70%, 360px); list-style: none; margin: 0; padding: 0; display: grid; gap: 5px;
+  -webkit-mask-image: linear-gradient(transparent, #000 35%); mask-image: linear-gradient(transparent, #000 35%); }
+.live-comments li { justify-self: start; max-width: 100%; padding: 5px 11px; border-radius: 14px; background: rgba(7, 11, 22, 0.62); backdrop-filter: blur(6px); font-size: 0.86rem; line-height: 1.35; overflow-wrap: anywhere; animation: comment-in 0.25s ease; }
+.live-comments b { color: var(--teal); margin-right: 4px; }
+@keyframes comment-in { from { transform: translateY(8px); opacity: 0; } }
+.live-hearts { position: absolute; right: 18px; bottom: 10px; width: 60px; height: 70%; }
+.live-hearts span { position: absolute; bottom: 0; left: 16px; animation: heart-fly 2.6s ease-out forwards; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.4)); }
+@keyframes heart-fly {
+  0% { transform: translate(0, 0) scale(0.5); opacity: 0; }
+  10% { opacity: 1; transform: translate(0, -10px) scale(1); }
+  50% { transform: translate(var(--dx), -45%) scale(1.05); }
+  100% { transform: translate(calc(var(--dx) * -1), -260px) scale(0.8); opacity: 0; }
+}
+.live-composer { display: flex; gap: 8px; align-items: center; padding: 10px 12px 2px; }
+.live-composer input { flex: 1; border-radius: 22px; padding: 10px 16px; }
+.heart-btn { flex: none; width: 46px; height: 46px; border-radius: 50%; border: 0; background: var(--grad-warm); color: #fff; display: grid; place-items: center; cursor: pointer; transition: transform 0.1s; }
+.heart-btn:active { transform: scale(0.88); }

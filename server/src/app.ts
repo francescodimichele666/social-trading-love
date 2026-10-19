@@ -20,6 +20,7 @@ import journalRoutes from './routes/journal.js';
 import challengeRoutes from './routes/challenges.js';
 import securityRoutes from './routes/security.js';
 import notificationRoutes from './routes/notifications.js';
+import messageRoutes from './routes/messages.js';
 import { canAppoint } from './staff.js';
 
 export type AuthUser = { id: number; role: 'member' | 'moderator' | 'admin'; username: string; isOwner: boolean; canAppoint: boolean };
@@ -118,6 +119,7 @@ export async function buildApp(opts: { logger?: boolean; rateLimit?: boolean } =
   await app.register(challengeRoutes, { prefix: '/api' });
   await app.register(securityRoutes, { prefix: '/api' });
   await app.register(notificationRoutes, { prefix: '/api' });
+  await app.register(messageRoutes, { prefix: '/api' });
 
   return app;
 }

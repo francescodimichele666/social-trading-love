@@ -28,6 +28,9 @@ import ChallengePage from './pages/ChallengePage';
 
 // La parte video (LiveKit) è pesante: si scarica solo quando si entra in una Live.
 const RoomPage = lazy(() => import('./pages/RoomPage'));
+import Videos from './pages/Videos';
+import Messages from './pages/Messages';
+import Chat from './pages/Chat';
 
 function OldRoomLink() {
   const { id } = useParams();
@@ -35,7 +38,7 @@ function OldRoomLink() {
 }
 
 export default function App() {
-  const { me, loading, unread } = useAuth();
+  const { me, loading, unreadMessages } = useAuth();
   const location = useLocation();
   const [creating, setCreating] = useState(false);
 
@@ -63,8 +66,10 @@ export default function App() {
   }
 
   const inRoom = /^\/live\/\d+/.test(location.pathname);
+  const inChat = /^\/messaggi\/[^/]+/.test(location.pathname);
+  const inReels = location.pathname === '/video';
   return (
-    <div className={`app ${inRoom ? 'app-room' : ''}`}>
+    <div className={`app ${inRoom ? 'app-room' : ''} ${inChat ? 'app-chat' : ''} ${inReels ? 'app-reels' : ''}`}>
       {banner}
       <main className="content">
         <Routes>
@@ -76,6 +81,9 @@ export default function App() {
           <Route path="/piazze" element={<Navigate to="/live" replace />} />
           <Route path="/piazze/:id" element={<OldRoomLink />} />
           <Route path="/live/:id" element={<Suspense fallback={<div className="spinner" />}><RoomPage /></Suspense>} />
+          <Route path="/video" element={<Videos />} />
+          <Route path="/messaggi" element={<Messages />} />
+          <Route path="/messaggi/:username" element={<Chat />} />
           <Route path="/inviti" element={<Invites />} />
           <Route path="/cerca" element={<Search />} />
           <Route path="/tag/:tag" element={<Tag />} />
@@ -94,12 +102,12 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
-      {!inRoom && (
+      {!inRoom && !inChat && (
         <nav className="tabbar" aria-label="Menu principale">
           <NavLink to="/" end><Icon name="home" /><span>Home</span></NavLink>
           <NavLink to="/live"><Icon name="live" /><span>Live</span></NavLink>
           <button className="tab-create" onClick={() => setCreating(true)} aria-label="Crea"><Icon name="plus" size={26} /></button>
-          <NavLink to="/notifiche"><Icon name="bell" /><span>Avvisi</span>{unread > 0 && <b className="badge">{unread}</b>}</NavLink>
+          <NavLink to="/messaggi"><Icon name="inbox" /><span>Messaggi</span>{unreadMessages > 0 && <b className="badge">{unreadMessages}</b>}</NavLink>
           <NavLink to={`/u/${me.username}`}><Icon name="user" /><span>Profilo</span></NavLink>
         </nav>
       )}

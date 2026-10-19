@@ -10,7 +10,7 @@ import Icon from '../components/Icon';
 import { POST_CREATED } from '../components/CreateSheet';
 
 export default function Feed({ onCompose }: { onCompose: () => void }) {
-  const { me } = useAuth();
+  const { me, unread } = useAuth();
   const [posts, setPosts] = useState<Post[]>([]);
   const [nextPage, setNextPage] = useState<number | null>(0);
   const [loading, setLoading] = useState(false);
@@ -43,8 +43,13 @@ export default function Feed({ onCompose }: { onCompose: () => void }) {
           {me?.role !== 'member' && <Link className="icon-btn" to="/moderazione" aria-label="Moderazione"><Icon name="shield" /></Link>}
           <Link className="icon-btn" to="/cerca" aria-label="Cerca"><Icon name="search" /></Link>
           <Link className="icon-btn" to="/inviti" aria-label="Porta un amico"><Icon name="gift" /></Link>
+          <Link className="icon-btn with-badge" to="/notifiche" aria-label="Avvisi"><Icon name="bell" />{unread > 0 && <b className="badge">{unread}</b>}</Link>
         </div>
       </header>
+      <nav className="feed-switch" aria-label="Cosa guardare">
+        <span className="on">Bacheca</span>
+        <Link to="/video"><Icon name="play" size={14} filled /> Video</Link>
+      </nav>
       <LiveStrip />
       <ChallengeCard />
       {me && (

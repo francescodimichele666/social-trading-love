@@ -153,6 +153,7 @@ export default async function authRoutes(app: FastifyInstance) {
   app.get('/me', { preHandler: app.authenticate }, async (req) => {
     const user = await one('SELECT * FROM users WHERE id = $1', [req.user.id]);
     const unread = await one<{ n: number }>('SELECT count(*)::int AS n FROM notifications WHERE user_id = $1 AND read_at IS NULL', [req.user.id]);
-    return { user: { ...publicUser(user), email: user.email, termsVersion: user.terms_version, twoFactor: Boolean(user.totp_secret) }, currentTermsVersion: TERMS_VERSION, unreadNotifications: unread?.n ?? 0 };
+    const unreadMsg = await one<{ n: number }>('SELECT count(*)::int AS n FROM messages WHERE recipient_id = $1 AND read_at IS NULL', [req.user.id]);
+    return { user: { ...publicUser(user), email: user.email, termsVersion: user.terms_version, twoFactor: Boolean(user.totp_secret) }, currentTermsVersion: TERMS_VERSION, unreadNotifications: unread?.n ?? 0, unreadMessages: unreadMsg?.n ?? 0 };
   });
 }

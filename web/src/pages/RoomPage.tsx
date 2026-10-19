@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Chat, ControlBar, GridLayout, LiveKitRoom, ParticipantTile, RoomAudioRenderer, useTracks } from '@livekit/components-react';
+import { ControlBar, GridLayout, LiveKitRoom, ParticipantTile, RoomAudioRenderer, useTracks } from '@livekit/components-react';
 import type { TrackReference } from '@livekit/components-react';
 import { Track } from 'livekit-client';
 import '@livekit/components-styles';
@@ -11,6 +11,7 @@ import Icon from '../components/Icon';
 import ReportButton from '../components/ReportButton';
 import LivePanel from '../components/LivePanel';
 import ShareTradingView from '../components/ShareTradingView';
+import { LiveComposer, LiveOverlay } from '../components/LiveOverlay';
 import { useAuth } from '../auth';
 
 type Person = { id: number; username: string; displayName: string; avatarUrl: string | null; role: string };
@@ -81,7 +82,7 @@ export default function RoomPage() {
   const myId = authMe?.id;
   const [info, setInfo] = useState<Info | null>(null);
   const [conn, setConn] = useState<Conn | null>(null);
-  const [showChat, setShowChat] = useState(false);
+  const [showChat, setShowChat] = useState(true);
   const [error, setError] = useState('');
 
   const load = useCallback(async () => {
@@ -193,8 +194,11 @@ export default function RoomPage() {
           onError={(e) => setError(`Il video non si collega (${e.message}). Prova con i dati del telefono invece del Wi-Fi di casa: se così funziona, il problema è solo il router di casa.`)}
           onMediaDeviceFailure={() => setError('Il telefono non ha dato il permesso per fotocamera o microfono. Consentili nelle impostazioni del browser per questo sito e rientra.')}>
           <div className="room-main">
-            <Stage />
-            {showChat && <div className="room-chat"><Chat /></div>}
+            <div className="stage-wrap">
+              <Stage />
+              <LiveOverlay showComments={showChat} />
+            </div>
+            <LiveComposer />
           </div>
           <RoomAudioRenderer />
           {canPublish && <ShareTradingView />}
@@ -204,7 +208,7 @@ export default function RoomPage() {
 
       {room.status === 'live' && !me.removed && (
         <footer className="room-actions">
-          {conn?.token !== 'demo' && <button className="btn ghost" onClick={() => setShowChat(!showChat)}>{showChat ? 'Nascondi chat' : <><Icon name="chat" size={18} /> Chat</>}</button>}
+          {conn?.token !== 'demo' && <button className="btn ghost" onClick={() => setShowChat(!showChat)}>{showChat ? 'Nascondi commenti' : <><Icon name="chat" size={18} /> Mostra commenti</>}</button>}
           {me.role === 'audience' && (me.handRaised
             ? <button className="btn ghost" onClick={() => act(`/rooms/${id}/hand`, 'DELETE')}>Abbassa la mano</button>
             : <button className="btn" onClick={() => act(`/rooms/${id}/hand`)}><Icon name="hand" size={18} /> Alza la mano</button>)}

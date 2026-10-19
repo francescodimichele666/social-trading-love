@@ -115,6 +115,11 @@ export default async function accountRoutes(app: FastifyInstance) {
                 (SELECT json_agg(json_build_object('day', k.day, 'kept', k.kept) ORDER BY k.day) FROM challenge_checkins k WHERE k.challenge_id = c.id AND k.user_id = $1) AS checkins
          FROM challenge_participants p JOIN challenges c ON c.id = p.challenge_id WHERE p.user_id = $1 ORDER BY c.starts_on`, [id])).rows,
       badges: (await query('SELECT title, emoji, awarded_at FROM user_badges WHERE user_id = $1 ORDER BY awarded_at', [id])).rows,
+      messages: (await query(
+        `SELECT s.username AS da, r.username AS a, m.body, m.created_at, m.read_at FROM messages m
+         JOIN users s ON s.id = m.sender_id JOIN users r ON r.id = m.recipient_id
+         WHERE m.sender_id = $1 OR m.recipient_id = $1 ORDER BY m.id`, [id])).rows,
+      blocked: (await query('SELECT u.username, b.created_at FROM user_blocks b JOIN users u ON u.id = b.blocked_id WHERE b.blocker_id = $1', [id])).rows,
     };
     reply.header('content-disposition', `attachment; filename="love-trading-club-${user.username}.json"`);
     return data;

@@ -786,3 +786,35 @@ test('solo le email scelte diventano amministratori, mai chi si iscrive e basta'
   const { rows } = await pool.query(`SELECT username, role, is_owner FROM users WHERE username IN ('francesco', 'ugo') ORDER BY username`);
   assert.deepEqual(rows.map((r) => [r.username, r.role, r.is_owner]), [['francesco', 'member', false], ['ugo', 'admin', true]]);
 });
+
+test('video a tutto schermo e messaggi privati con blocco', async () => {
+  const videos = await call('GET', '/api/videos', admin);
+  assert.equal(videos.status, 200);
+  assert.ok(videos.body.posts.every((p: any) => p.mediaType === 'video'));
+  assert.equal(videos.body.end, true);
+
+  const mia = await call('POST', '/api/register', undefined, person('mia'));
+  const leo = await call('POST', '/api/register', undefined, person('leo'));
+  const m = mia.body.token, l = leo.body.token;
+  assert.equal((await call('POST', '/api/messages/leo', m, { body: 'Ciao Leo, come gestisci lo stop?' })).status, 201);
+  assert.equal((await call('POST', '/api/messages/leo', m, { body: 'Guadagno garantito, scrivimi' })).status, 400);
+  assert.equal((await call('GET', '/api/me', l)).body.unreadMessages, 1);
+  const list = await call('GET', '/api/messages', l);
+  assert.equal(list.body.conversations[0].with.username, 'mia');
+  assert.equal(list.body.conversations[0].unread, 1);
+  const chat = await call('GET', '/api/messages/mia', l);
+  assert.equal(chat.body.messages.length, 1);
+  assert.equal(chat.body.canWrite, true);
+  assert.equal((await call('GET', '/api/messages/unread', l)).body.unread, 0);
+  assert.equal((await call('POST', '/api/messages/mia', l, { body: 'Mai spostarlo!' })).status, 201);
+  assert.equal((await call('GET', '/api/messages/leo', m)).body.messages.length, 2);
+
+  // Leo blocca Mia: lei non può più scrivergli.
+  assert.equal((await call('POST', '/api/users/mia/block', l)).status, 200);
+  assert.equal((await call('POST', '/api/messages/leo', m, { body: 'Ci sei?' })).status, 403);
+  assert.equal((await call('GET', '/api/messages/leo', m)).body.canWrite, false);
+  assert.equal((await call('DELETE', '/api/users/mia/block', l)).status, 200);
+  assert.equal((await call('POST', '/api/messages/leo', m, { body: 'Ci sei?' })).status, 201);
+  assert.equal((await call('POST', '/api/messages/mia', m, { body: 'a me stessa' })).status, 400);
+  assert.ok((await call('GET', '/api/me/export', l)).body.messages.length >= 3);
+});

@@ -25,6 +25,13 @@ const users: U[] = [
   { id: 4, username: 'sara', displayName: 'Sara Conti', bio: 'Investitrice di lungo periodo, ETF e pazienza.', interests: ['ETF', 'lungo periodo'], avatarUrl: null, role: 'member' },
 ];
 const ME = 1;
+// Messaggi privati dell'anteprima.
+const dms = [
+  { id: 1, from: 2, to: 1, body: 'Ciao Francesco! Stasera alla Live porto il mio diario di ottobre, ti va di commentarlo insieme?', at: ago(50), read: true },
+  { id: 2, from: 1, to: 2, body: 'Volentieri! Portami anche il trade su STLAM, quello in cui sei uscita prima.', at: ago(45), read: true },
+  { id: 3, from: 2, to: 1, body: 'Fatto, lo metto per primo 💪', at: ago(8), read: false },
+  { id: 4, from: 3, to: 1, body: 'Grazie per il consiglio sullo stop: questa settimana l\'ho rispettato sempre.', at: ago(300), read: true },
+];
 const following = new Set([2, 3]);
 
 let nextId = 100;
@@ -33,6 +40,7 @@ type DemoPost = { id: number; authorId: number; body: string; mediaUrl: string |
 type DemoRoom = { id: number; hostId: number; title: string; description: string; topic: string; status: 'scheduled' | 'live' | 'ended'; scheduledAt: string; startedAt: string | null; stage: number[]; hands: number[]; listeners: number; record?: boolean };
 const posts: DemoPost[] = [
   { id: 6, authorId: 2, body: 'Dal mio diario: chiusa in guadagno, ma sono uscita prima dell\'obiettivo per paura. Voi lasciate lavorare il piano fino in fondo? #diario #psicologia', mediaUrl: null, mediaType: null, tradeId: 5, createdAt: ago(55), likes: new Set<number>([1, 3, 4]), comments: [{ id: 3, authorId: 3, body: 'Succede anche a me! Però +2 R resta un ottimo risultato.', createdAt: ago(40) }] },
+  { id: 7, authorId: 3, body: 'In 60 secondi: come calcolo la size della posizione con l\'1% di rischio. Salvatevelo! #rischio #size', mediaUrl: demoVideo, mediaType: 'video' as const, mediaPoster: demoPoster, mediaDuration: 9, createdAt: ago(4), likes: new Set<number>([2]), comments: [] },
   { id: 5, authorId: 2, body: 'Primo video! Come decido lo stop loss prima di entrare, e perché non lo sposto mai. Ditemi come fate voi 👇 #stoploss', mediaUrl: demoVideo, mediaType: 'video' as const, mediaPoster: demoPoster, mediaDuration: 9, createdAt: ago(12), likes: new Set<number>([3, 4]), comments: [{ id: 2, authorId: 4, body: 'Chiarissimo, grazie Giulia!', createdAt: ago(6) }] },
   { id: 1, authorId: 2, body: 'Operazione chiusa in perdita (-0,8%). Ho rispettato lo stop loss senza spostarlo: per me oggi è una vittoria. Il grafico con il punto di uscita 👇 #stoploss #disciplina', mediaUrl: chart('#2dd4bf', '0,60 60,80 120,70 180,110 240,130 300,155 340,160'), mediaType: 'image' as const, createdAt: ago(35), likes: new Set<number>([1, 3]), comments: [{ id: 1, authorId: 3, body: 'Rispetto! Io lo spostavo sempre e perdevo il doppio.', createdAt: ago(20) }] },
   { id: 2, authorId: 3, body: 'Domanda per chi ha più esperienza: come gestite la voglia di "rifarvi" dopo una perdita? Stasera ne parliamo nella Live di @giulia? Intanto guardo $EURUSD #psicologia', mediaUrl: null, mediaType: null, createdAt: ago(80), likes: new Set([2]), comments: [] },
@@ -292,8 +300,35 @@ export async function demoApi(path: string, method: string, body: any): Promise<
   if (route === '/me' && method === 'PATCH') return { user: Object.assign(user(ME), body) };
   if (route === '/me') {
     const me = user(ME);
-    return { user: { ...me, email: 'francesco@esempio.it' }, unreadNotifications: notifications.filter((n) => !n.read).length };
+    return { user: { ...me, email: 'francesco@esempio.it' }, unreadNotifications: notifications.filter((n) => !n.read).length, unreadMessages: dms.filter((d) => d.to === ME && !d.read).length };
   }
+  if (route === '/videos') {
+    return { posts: posts.filter((p) => visible(p) && p.mediaType === 'video').map(serializePost), end: true, nextPage: null };
+  }
+  if (route === '/messages') {
+    const others = [...new Set(dms.filter((d) => d.from === ME || d.to === ME).map((d) => (d.from === ME ? d.to : d.from)))];
+    const conversations = others.map((o) => {
+      const mine = dms.filter((d) => (d.from === ME && d.to === o) || (d.from === o && d.to === ME));
+      const last = mine[mine.length - 1];
+      return { with: brief(user(o)), unread: mine.filter((d) => d.to === ME && !d.read).length, last: { body: last.body, createdAt: last.at, mine: last.from === ME }, _id: last.id };
+    }).sort((a, b) => b.last.createdAt.localeCompare(a.last.createdAt));
+    return { conversations };
+  }
+  if ((match = m(/^\/messages\/([a-z0-9_]+)$/))) {
+    const other = users.find((u) => u.username === match![1]);
+    if (!other) throw new DemoError(404, 'Utente non trovato');
+    if (method === 'POST') {
+      const text = String(body?.body ?? '').trim();
+      if (!text) throw new DemoError(400, 'Scrivi qualcosa');
+      const d = { id: dms.length + 1, from: ME, to: other.id, body: text, at: new Date().toISOString(), read: false };
+      dms.push(d);
+      return { message: { id: d.id, body: d.body, createdAt: d.at, mine: true, read: false } };
+    }
+    const list = dms.filter((d) => (d.from === ME && d.to === other.id) || (d.from === other.id && d.to === ME));
+    list.forEach((d) => { if (d.to === ME) d.read = true; });
+    return { with: brief(other), messages: list.map((d) => ({ id: d.id, body: d.body, createdAt: d.at, mine: d.from === ME, read: d.read })), blockedByMe: false, canWrite: other.id !== ME };
+  }
+  if ((match = m(/^\/users\/[a-z0-9_]+\/block$/))) return { blocked: method === 'POST' };
   if (route === '/feed') {
     const list = posts.filter(visible).map(serializePost).sort((a, b) => Number(b.fromFollowing) - Number(a.fromFollowing) || b.createdAt.localeCompare(a.createdAt));
     return { posts: list, end: true, nextPage: null };

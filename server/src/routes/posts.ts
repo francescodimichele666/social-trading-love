@@ -99,6 +99,19 @@ export default async function postRoutes(app: FastifyInstance) {
     };
   });
 
+  // Video a tutto schermo, dal più recente: solo gli ultimi 14 giorni, poi finisce (niente scorrimento infinito).
+  app.get<{ Querystring: { page?: string } }>('/videos', async (req) => {
+    const page = Math.max(0, Number(req.query.page ?? 0) || 0);
+    const VPAGE = 10;
+    const { rows } = await query(
+      `${POST_SELECT} WHERE ${VISIBLE} AND p.media_type = 'video' AND p.created_at > now() - interval '14 days'
+       ORDER BY p.created_at DESC, p.id DESC LIMIT $2 OFFSET $3`,
+      [req.user.id, VPAGE + 1, page * VPAGE],
+    );
+    const end = rows.length <= VPAGE;
+    return { posts: rows.slice(0, VPAGE).map(serialize), end, nextPage: end ? null : page + 1 };
+  });
+
   app.get<{ Params: { username: string }; Querystring: { page?: string } }>('/users/:username/posts', async (req) => {
     const page = Math.max(0, Number(req.query.page ?? 0) || 0);
     const { rows } = await query(

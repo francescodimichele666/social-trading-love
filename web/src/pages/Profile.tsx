@@ -104,6 +104,7 @@ export default function Profile() {
         ) : (
           <div className="row center-row">
             <button className={`btn ${data.isFollowing ? 'ghost' : ''}`} onClick={toggleFollow}>{data.isFollowing ? <><Icon name="check" size={18} /> Segui già</> : 'Segui'}</button>
+            <Link className="btn ghost" to={`/messaggi/${u.username}`}><Icon name="send" size={18} /> Messaggio</Link>
             <ReportButton targetType="user" targetId={u.id} label="Segnala profilo" />
           </div>
         )}
