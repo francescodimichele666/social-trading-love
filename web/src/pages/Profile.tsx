@@ -107,13 +107,13 @@ export default function Profile() {
             <ReportButton targetType="user" targetId={u.id} label="Segnala profilo" />
           </div>
         )}
-        {!data.isMe && me?.role === 'admin' && !u.isOwner && (u.role !== 'admin' || me.isOwner) && (
+        {!data.isMe && me?.role === 'admin' && !u.isOwner && (u.role !== 'admin' || me.canAppoint) && (
           <div className="card role-box">
             <small className="muted">Ruolo nella comunità</small>
             <div className="row">
               <button className={`btn small ${u.role === 'member' ? '' : 'ghost'}`} onClick={() => setRole('member')}>Membro</button>
               <button className={`btn small ${u.role === 'moderator' ? '' : 'ghost'}`} onClick={() => setRole('moderator')}>Moderatore</button>
-              {me.isOwner && <button className={`btn small ${u.role === 'admin' ? '' : 'ghost'}`} onClick={() => setRole('admin')}>Amministratore</button>}
+              {me.canAppoint && <button className={`btn small ${u.role === 'admin' ? '' : 'ghost'}`} onClick={() => setRole('admin')}>Amministratore</button>}
             </div>
             {error && <p className="error">{error}</p>}
           </div>

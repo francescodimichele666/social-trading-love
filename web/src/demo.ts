@@ -4,7 +4,7 @@
 import demoVideo from './assets/demo-video.mp4';
 import demoPoster from './assets/demo-video.jpg';
 
-type U = { id: number; username: string; displayName: string; bio: string; interests: string[]; avatarUrl: string | null; role: 'member' | 'moderator' | 'admin'; isOwner?: boolean };
+type U = { id: number; username: string; displayName: string; bio: string; interests: string[]; avatarUrl: string | null; role: 'member' | 'moderator' | 'admin'; isOwner?: boolean; canAppoint?: boolean };
 
 const now = Date.now();
 const ago = (min: number) => new Date(now - min * 60000).toISOString();
@@ -19,7 +19,7 @@ const chart = (color: string, points: string) =>
   );
 
 const users: U[] = [
-  { id: 1, username: 'francesco', displayName: 'Francesco', bio: 'Fondatore della comunità. Prima la gestione del rischio, poi tutto il resto.', interests: ['rischio', 'azioni', 'ETF'], avatarUrl: null, role: 'admin', isOwner: true },
+  { id: 1, username: 'francesco', displayName: 'Francesco', bio: 'Fondatore della comunità. Prima la gestione del rischio, poi tutto il resto.', interests: ['rischio', 'azioni', 'ETF'], avatarUrl: null, role: 'admin', isOwner: true, canAppoint: true },
   { id: 2, username: 'giulia', displayName: 'Giulia Rossi', bio: 'Swing trading su azioni europee. Diario delle mie operazioni, anche quelle andate male.', interests: ['azioni', 'diario'], avatarUrl: null, role: 'moderator' },
   { id: 3, username: 'marco', displayName: 'Marco Bianchi', bio: 'Imparo da 2 anni. Mai più di 1% a operazione.', interests: ['forex', 'psicologia'], avatarUrl: null, role: 'member' },
   { id: 4, username: 'sara', displayName: 'Sara Conti', bio: 'Investitrice di lungo periodo, ETF e pazienza.', interests: ['ETF', 'lungo periodo'], avatarUrl: null, role: 'member' },

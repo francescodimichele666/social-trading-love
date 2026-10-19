@@ -79,7 +79,7 @@ export default async function adminRoutes(app: FastifyInstance) {
     const target = await one('SELECT id, role, banned_at FROM users WHERE id = $1 AND deleted_at IS NULL', [Number(req.params.id)]);
     if (!target) throw new HttpError(404, 'Utente non trovato');
     if (!target.banned_at) throw new HttpError(400, 'Questo account non è sospeso');
-    if (target.role !== 'member' && !req.user.isOwner) throw new HttpError(403, 'Solo il proprietario può riattivare moderatori e amministratori');
+    if (target.role !== 'member' && !req.user.canAppoint) throw new HttpError(403, 'Moderatori e amministratori li possono riattivare solo il proprietario e gli amministratori fondatori');
     await tx(async (c) => {
       await c.query('UPDATE users SET banned_at = NULL, ban_reason = NULL WHERE id = $1', [target.id]);
       await c.query(
@@ -184,9 +184,9 @@ export default async function adminRoutes(app: FastifyInstance) {
   });
 
   // Il proprietario non si tocca; moderatori e amministratori li gestisce solo il proprietario.
-  function canManage(me: { id: number; isOwner: boolean }, target: any) {
+  function canManage(me: { id: number; canAppoint: boolean }, target: any) {
     if (target.is_owner || Number(target.id) === me.id) return false;
-    return target.role === 'member' || me.isOwner;
+    return target.role === 'member' || me.canAppoint;
   }
 
   async function manageable(req: any) {
@@ -194,7 +194,7 @@ export default async function adminRoutes(app: FastifyInstance) {
     if (!target) throw new HttpError(404, 'Utente non trovato');
     if (target.is_owner) throw new HttpError(403, 'Il proprietario non si può modificare da qui');
     if (Number(target.id) === req.user.id) throw new HttpError(400, 'Per il tuo account usa la pagina Account');
-    if (target.role !== 'member' && !req.user.isOwner) throw new HttpError(403, 'Moderatori e amministratori li gestisce solo il proprietario');
+    if (target.role !== 'member' && !req.user.canAppoint) throw new HttpError(403, 'Moderatori e amministratori li gestiscono solo il proprietario e gli amministratori fondatori');
     return target;
   }
 

@@ -87,8 +87,8 @@ export default async function moderationRoutes(app: FastifyInstance) {
     if (action === 'ban' || report.target_type === 'user') {
       const owner = await one('SELECT role, is_owner FROM users WHERE id = $1', [target.ownerId]);
       if (action !== 'dismiss' && owner?.is_owner) throw new HttpError(403, 'Il proprietario non può essere sospeso');
-      if (action !== 'dismiss' && owner?.role !== 'member' && !req.user.isOwner) {
-        throw new HttpError(403, 'Solo il proprietario può sospendere moderatori e amministratori');
+      if (action !== 'dismiss' && owner?.role !== 'member' && !req.user.canAppoint) {
+        throw new HttpError(403, 'Moderatori e amministratori li possono sospendere solo il proprietario e gli amministratori fondatori');
       }
     }
 
@@ -126,14 +126,14 @@ export default async function moderationRoutes(app: FastifyInstance) {
   });
 
   app.post<{ Params: { id: string } }>('/moderation/users/:id/role', { preHandler: app.requireModerator }, async (req) => {
-    // Amministratori: nominano moderatori. Solo il proprietario nomina o toglie amministratori.
+    // Amministratori: nominano moderatori. Amministratori li nominano o tolgono solo il proprietario e gli amministratori fondatori.
     if (req.user.role !== 'admin') throw new HttpError(403, 'Solo gli amministratori possono cambiare i ruoli');
     const { role } = z.object({ role: z.enum(['member', 'moderator', 'admin']) }).parse(req.body);
     const target = await one('SELECT id, role, is_owner FROM users WHERE id = $1', [Number(req.params.id)]);
     if (!target) throw new HttpError(404, 'Utente non trovato');
     if (target.is_owner) throw new HttpError(403, 'Il ruolo del proprietario non si può cambiare');
-    if ((role === 'admin' || target.role === 'admin') && !req.user.isOwner) {
-      throw new HttpError(403, 'Solo il proprietario può nominare o togliere amministratori');
+    if ((role === 'admin' || target.role === 'admin') && !req.user.canAppoint) {
+      throw new HttpError(403, 'Amministratori li possono nominare o togliere solo il proprietario e gli amministratori fondatori');
     }
     await query('UPDATE users SET role = $2 WHERE id = $1', [target.id, role]);
     if (role !== target.role) {

@@ -767,6 +767,13 @@ test('solo le email scelte diventano amministratori, mai chi si iscrive e basta'
   const ugo = await call('POST', '/api/register', undefined, person('ugo'));
   assert.equal(ugo.body.user.role, 'member');
 
+  // Lorenzo, amministratore fondatore, può nominare e togliere amministratori come il proprietario.
+  assert.equal(lorenzo.body.user.canAppoint, true);
+  assert.equal((await call('POST', `/api/moderation/users/${ugo.body.user.id}/role`, lorenzo.body.token, { role: 'admin' })).status, 200);
+  assert.equal((await call('POST', `/api/moderation/users/${ugo.body.user.id}/role`, lorenzo.body.token, { role: 'member' })).status, 200);
+  const owner = (await call('GET', '/api/me', admin)).body.user;
+  assert.equal((await call('POST', `/api/moderation/users/${owner.id}/role`, lorenzo.body.token, { role: 'member' })).status, 403);
+
   // Un'email aggiunta dopo: all'avvio l'account già iscritto prende il ruolo.
   config.adminEmails.push('ugo@example.com');
   await syncStaff();

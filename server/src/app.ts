@@ -20,8 +20,9 @@ import journalRoutes from './routes/journal.js';
 import challengeRoutes from './routes/challenges.js';
 import securityRoutes from './routes/security.js';
 import notificationRoutes from './routes/notifications.js';
+import { canAppoint } from './staff.js';
 
-export type AuthUser = { id: number; role: 'member' | 'moderator' | 'admin'; username: string; isOwner: boolean };
+export type AuthUser = { id: number; role: 'member' | 'moderator' | 'admin'; username: string; isOwner: boolean; canAppoint: boolean };
 
 declare module '@fastify/jwt' {
   interface FastifyJWT {
@@ -69,7 +70,7 @@ export async function buildApp(opts: { logger?: boolean; rateLimit?: boolean } =
     }
     // I "biglietti" a metà accesso (codice email, due fattori) non valgono come accesso.
     if (payload.purpose) throw new HttpError(401, 'Accesso richiesto');
-    const user = await one('SELECT id, role, username, is_owner, banned_at, deleted_at, password_changed_at, sessions_revoked_at FROM users WHERE id = $1', [payload.id]);
+    const user = await one('SELECT id, email, role, username, is_owner, banned_at, deleted_at, password_changed_at, sessions_revoked_at FROM users WHERE id = $1', [payload.id]);
     if (!user || user.deleted_at) throw new HttpError(401, 'Accesso richiesto');
     // Dopo un cambio password valgono solo gli accessi fatti dopo.
     if (user.password_changed_at && payload.iat && payload.iat < Math.floor(user.password_changed_at.getTime() / 1000)) {
@@ -80,7 +81,7 @@ export async function buildApp(opts: { logger?: boolean; rateLimit?: boolean } =
       throw new HttpError(401, 'Sessione scaduta: entra di nuovo');
     }
     if (user.banned_at) throw new HttpError(403, 'Account sospeso');
-    req.user = { id: user.id, role: user.role, username: user.username, isOwner: user.is_owner };
+    req.user = { id: user.id, role: user.role, username: user.username, isOwner: user.is_owner, canAppoint: canAppoint(user) };
   });
 
   app.decorate('requireModerator', async (req: FastifyRequest, reply: FastifyReply) => {

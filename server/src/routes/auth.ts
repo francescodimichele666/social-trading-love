@@ -6,7 +6,7 @@ import { HttpError } from '../app.js';
 import { RULES, RULES_VERSION } from '../rules.js';
 import { config } from '../config.js';
 import { TERMS_VERSION } from '../legal.js';
-import { applyStaff, staffRoleFor } from '../staff.js';
+import { applyStaff, canAppoint, staffRoleFor } from '../staff.js';
 import { checkSecondFactor, checkVerificationCode, emailVerificationActive, issueSession, testCodeMode, readTicket, sendVerificationCode, signTicket } from '../security.js';
 
 const registerSchema = z.object({
@@ -29,7 +29,7 @@ export function isAdult(birthDate: string, now = new Date()): boolean {
 export function publicUser(u: any) {
   return {
     id: u.id, username: u.username, displayName: u.display_name, bio: u.bio, interests: u.interests,
-    avatarUrl: u.avatar_url, role: u.role, isOwner: u.is_owner, createdAt: u.created_at, isMentor: Boolean(u.mentor_since),
+    avatarUrl: u.avatar_url, role: u.role, isOwner: u.is_owner, canAppoint: canAppoint(u), createdAt: u.created_at, isMentor: Boolean(u.mentor_since),
   };
 }
 

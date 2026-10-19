@@ -32,10 +32,11 @@ export const config = {
   // Codice di prova per l'iscrizione finché la casella email non è impostata (vuoto = nessun codice).
   // Appena imposti l'email di invio, arrivano i codici veri e questo smette di valere.
   testAccessCode: (process.env.ACCESS_TEST_CODE ?? '').trim(),
-  // Chi comanda la comunità. Nessuno diventa amministratore solo perché si è iscritto per primo:
-  // il proprietario e gli amministratori iniziali sono decisi da queste email (l'esempio del file .env non vale).
-  ownerEmail: emailOr(process.env.OWNER_EMAIL, 'francescodimichele@gmail.com'),
-  adminEmails: (process.env.ADMIN_EMAILS ?? 'lorenzogiustarini@gmail.com').split(/[,;\s]+/).map((e) => e.trim().toLowerCase()).filter(Boolean),
+  // Chi comanda la comunità, deciso da Francesco: lui è il proprietario, Lorenzo Giustarini amministratore.
+  // Nessuno diventa amministratore perché si iscrive per primo. Gli altri amministratori li nomina solo il proprietario dall'app.
+  // OWNER_EMAIL nel file .env vale solo nei test: così un errore di battitura in .env non toglie il posto al proprietario.
+  ownerEmail: process.env.NODE_ENV === 'production' ? 'francescodimichele@gmail.com' : emailOr(process.env.OWNER_EMAIL, 'francescodimichele@gmail.com'),
+  adminEmails: ['lorenzogiustarini@gmail.com', ...(process.env.ADMIN_EMAILS ?? '').split(/[,;\s]+/)].map((e) => e.trim().toLowerCase()).filter(Boolean),
   // Indirizzo pubblico del sito, usato nei link delle email (es. https://lovetrading.duckdns.org).
   publicUrl: process.env.PUBLIC_URL ?? '',
   // Cartella dei backup, per mostrare nel pannello quando è stato fatto l'ultimo.

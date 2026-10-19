@@ -41,7 +41,7 @@ export async function api<T = any>(path: string, options: { method?: string; bod
   return data as T;
 }
 
-export type User = { id: number; username: string; displayName: string; bio: string; interests: string[]; avatarUrl: string | null; role: 'member' | 'moderator' | 'admin'; isOwner?: boolean; isMentor?: boolean };
+export type User = { id: number; username: string; displayName: string; bio: string; interests: string[]; avatarUrl: string | null; role: 'member' | 'moderator' | 'admin'; isOwner?: boolean; canAppoint?: boolean; isMentor?: boolean };
 export type Post = {
   id: number; body: string; mediaUrl: string | null; mediaType: 'image' | 'video' | null; mediaPoster?: string | null; mediaDuration?: number | null; inReview: boolean; createdAt: string;
   author: Pick<User, 'id' | 'username' | 'displayName' | 'avatarUrl' | 'isOwner' | 'isMentor'>; likes: number; comments: number; liked: boolean; fromFollowing?: boolean;

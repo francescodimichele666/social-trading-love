@@ -75,7 +75,7 @@ function UserSheet({ id, onClose, onChanged }: { id: number; onClose: () => void
   };
 
   const u = d?.user;
-  const roleEditable = u && me && !u.isOwner && u.id !== me.id && (me.isOwner || u.role !== 'admin');
+  const roleEditable = u && me && !u.isOwner && u.id !== me.id && (me.canAppoint || u.role !== 'admin');
   const askText = {
     suspend: { title: 'Perché sospendi questo account?', hint: 'Resta nello storico. La persona non potrà più entrare.', path: 'suspend', cta: 'Sospendi' },
     reinstate: { title: 'Perché lo riattivi?', hint: 'La persona riceverà questo messaggio.', path: 'reinstate', cta: 'Riattiva' },
@@ -114,7 +114,7 @@ function UserSheet({ id, onClose, onChanged }: { id: number; onClose: () => void
               <div className="sheet-block">
                 <small className="muted">Ruolo nella comunità</small>
                 <div className="segmented three">
-                  {(['member', 'moderator', 'admin'] as const).filter((r) => r !== 'admin' || me!.isOwner).map((r) => (
+                  {(['member', 'moderator', 'admin'] as const).filter((r) => r !== 'admin' || me!.canAppoint).map((r) => (
                     <button key={r} type="button" className={u.role === r ? 'on' : ''} disabled={busy || u.role === r}
                       onClick={() => act(`/moderation/users/${u.id}/role`, { role: r }, `Ora è ${ROLE_LABEL[r].toLowerCase()}.`)}>{ROLE_LABEL[r]}</button>
                   ))}
@@ -157,7 +157,7 @@ function UserSheet({ id, onClose, onChanged }: { id: number; onClose: () => void
                 )}
               </div>
             ) : (
-              <p className="muted small">{u.isOwner ? 'Il proprietario non si può modificare da qui.' : u.id === me?.id ? 'Per il tuo account usa la pagina Account.' : 'Moderatori e amministratori li gestisce solo il proprietario.'}</p>
+              <p className="muted small">{u.isOwner ? 'Il proprietario non si può modificare da qui.' : u.id === me?.id ? 'Per il tuo account usa la pagina Account.' : 'Moderatori e amministratori li gestiscono solo il proprietario e gli amministratori fondatori.'}</p>
             )}
             {msg && <p className="notice friendly">{msg}</p>}
             {error && <p className="error">{error}</p>}

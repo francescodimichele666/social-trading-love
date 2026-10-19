@@ -61,7 +61,7 @@ function SuspendedItem({ u, onDone }: { u: Suspended; onDone: () => void }) {
   const [open, setOpen] = useState(false);
   const [statement, setStatement] = useState('');
   const [error, setError] = useState('');
-  const canReinstate = u.role === 'member' || me?.isOwner;
+  const canReinstate = u.role === 'member' || me?.canAppoint;
   const reinstate = async () => {
     try {
       await api(`/admin/users/${u.id}/reinstate`, { body: { statement } });
