@@ -24,7 +24,9 @@ services:
     environment:
       DATABASE_URL: postgres://stl:${DB_PASSWORD}@db:5432/stl
       JWT_SECRET: ${JWT_SECRET}
-      OWNER_EMAIL: ${OWNER_EMAIL:-}
+      # Proprietario e amministratori iniziali: nessuno diventa admin perché si iscrive per primo.
+      OWNER_EMAIL: ${OWNER_EMAIL:-francescodimichele@gmail.com}
+      ADMIN_EMAILS: ${ADMIN_EMAILS:-lorenzogiustarini@gmail.com}
       UPLOAD_DIR: /data/uploads
       # Il server parla a LiveKit dentro Docker; i telefoni usano l'indirizzo pubblico.
       # Con LiveKit Cloud (quando le porte del router non si aprono) basta scrivere LIVEKIT_CLOUD_URL nel file .env.

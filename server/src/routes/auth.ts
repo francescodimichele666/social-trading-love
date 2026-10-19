@@ -6,6 +6,7 @@ import { HttpError } from '../app.js';
 import { RULES, RULES_VERSION } from '../rules.js';
 import { config } from '../config.js';
 import { TERMS_VERSION } from '../legal.js';
+import { applyStaff, staffRoleFor } from '../staff.js';
 import { checkSecondFactor, checkVerificationCode, emailVerificationActive, issueSession, testCodeMode, readTicket, sendVerificationCode, signTicket } from '../security.js';
 
 const registerSchema = z.object({
@@ -54,30 +55,26 @@ export default async function authRoutes(app: FastifyInstance) {
   });
 
   app.get('/rules', async () => {
-    const count = await one<{ n: number }>('SELECT count(*)::int AS n FROM users');
-    return { version: RULES_VERSION, rules: RULES, firstUser: (count?.n ?? 0) === 0 };
+    return { version: RULES_VERSION, rules: RULES };
   });
 
   app.post('/register', { config: { rateLimit: { max: 10, timeWindow: '1 hour' } } }, async (req, reply) => {
     const data = registerSchema.parse(req.body);
     if (!isAdult(data.birthDate)) throw new HttpError(400, 'La comunità è riservata ai maggiorenni');
     const passwordHash = await bcrypt.hash(data.password, 10);
-    // Se la casella email del titolare non è ancora impostata (per esempio il primo iscritto, il proprietario),
+    // Se la casella email del titolare non è ancora impostata e non c'è il codice di prova,
     // l'email non si può confermare con un codice: in quel caso l'account è subito attivo.
     const mustVerify = await emailVerificationActive();
 
     const user = await tx(async (c) => {
-      // Lock per evitare che due persone diventino "primo utente" insieme.
+      // Lock per evitare che due iscrizioni con la stessa email o lo stesso nome passino insieme.
       await c.query('LOCK TABLE users IN SHARE ROW EXCLUSIVE MODE');
-      const { rows: [{ n }] } = await c.query('SELECT count(*)::int AS n FROM users');
-      const first = n === 0;
       let invitedBy: number | null = null;
+      // Nessuno diventa amministratore perché si iscrive per primo: contano solo le email decise dal proprietario.
+      const role = staffRoleFor(data.email);
 
-      if (first && config.ownerEmail && data.email !== config.ownerEmail) {
-        throw new HttpError(403, "Il primo account è riservato al proprietario della comunità");
-      }
       // Iscrizione libera. Il codice di un amico è facoltativo: serve solo a sapere chi ti ha portato.
-      if (!first && data.inviteCode) {
+      if (data.inviteCode) {
         const friend = await c.query('SELECT id FROM users WHERE friend_code = $1 AND banned_at IS NULL', [data.inviteCode]);
         invitedBy = friend.rows[0]?.id ?? null;
       }
@@ -87,9 +84,10 @@ export default async function authRoutes(app: FastifyInstance) {
       const { rows: [u] } = await c.query(
         `INSERT INTO users (email, username, password_hash, display_name, birth_date, role, is_owner, invited_by, rules_version, terms_version, terms_accepted_at, email_verified_at)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, now(), $11) RETURNING *`,
-        [data.email, data.username, passwordHash, data.displayName, data.birthDate, first ? 'admin' : 'member', first, invitedBy, RULES_VERSION, TERMS_VERSION, mustVerify ? null : new Date()],
+        [data.email, data.username, passwordHash, data.displayName, data.birthDate, role === 'member' ? 'member' : 'admin', false, invitedBy, RULES_VERSION, TERMS_VERSION, mustVerify ? null : new Date()],
       );
-      return u;
+      // Il proprietario prende il suo posto (e chi lo occupava prima lo lascia).
+      return role === 'owner' ? applyStaff(c, u.id) : u;
     });
 
     reply.status(201);

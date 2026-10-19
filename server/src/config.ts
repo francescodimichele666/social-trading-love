@@ -5,6 +5,12 @@ function required(name: string, fallback?: string): string {
   return value;
 }
 
+// Un'email presa dal file .env, oppure quella predefinita se manca o è ancora quella d'esempio.
+function emailOr(value: string | undefined, fallback: string): string {
+  const v = (value ?? '').trim().toLowerCase();
+  return v && !v.endsWith('@esempio.it') ? v : fallback;
+}
+
 export const config = {
   port: Number(process.env.PORT ?? 3000),
   databaseUrl: required('DATABASE_URL', 'postgres://stl:stl@localhost:5432/stl'),
@@ -26,8 +32,10 @@ export const config = {
   // Codice di prova per l'iscrizione finché la casella email non è impostata (vuoto = nessun codice).
   // Appena imposti l'email di invio, arrivano i codici veri e questo smette di valere.
   testAccessCode: (process.env.ACCESS_TEST_CODE ?? '').trim(),
-  // Se impostata, solo questa email può diventare il primo iscritto (il proprietario).
-  ownerEmail: (process.env.OWNER_EMAIL ?? '').trim().toLowerCase(),
+  // Chi comanda la comunità. Nessuno diventa amministratore solo perché si è iscritto per primo:
+  // il proprietario e gli amministratori iniziali sono decisi da queste email (l'esempio del file .env non vale).
+  ownerEmail: emailOr(process.env.OWNER_EMAIL, 'francescodimichele@gmail.com'),
+  adminEmails: (process.env.ADMIN_EMAILS ?? 'lorenzogiustarini@gmail.com').split(/[,;\s]+/).map((e) => e.trim().toLowerCase()).filter(Boolean),
   // Indirizzo pubblico del sito, usato nei link delle email (es. https://lovetrading.duckdns.org).
   publicUrl: process.env.PUBLIC_URL ?? '',
   // Cartella dei backup, per mostrare nel pannello quando è stato fatto l'ultimo.

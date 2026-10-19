@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../auth';
@@ -10,13 +10,11 @@ export default function Register() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const friendCode = params.get('invito') ?? '';
-  const [firstUser, setFirstUser] = useState(false);
   const [form, setForm] = useState({ displayName: '', username: '', email: '', password: '', birthDate: '', acceptRules: false, acceptTerms: false });
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [step, setStep] = useState<Step | null>(null);
 
-  useEffect(() => { api('/rules').then((r) => setFirstUser(Boolean(r.firstUser))).catch(() => {}); }, []);
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm({ ...form, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value });
 
@@ -48,8 +46,7 @@ export default function Register() {
       <HeartChart size={96} />
       <h1 className="brand">Entra nella comunità</h1>
       <p className="muted center">È gratis e ci vuole un minuto.</p>
-      {firstUser && <p className="notice">Sei il primo iscritto: diventerai il proprietario della comunità.</p>}
-      {friendCode && !firstUser && <p className="notice friendly">Ti ha invitato un amico: vi ritroverete subito nella comunità.</p>}
+      {friendCode && <p className="notice friendly">Ti ha invitato un amico: vi ritroverete subito nella comunità.</p>}
       <label>Il tuo nome<input id="displayName" value={form.displayName} onChange={set('displayName')} required maxLength={50} autoComplete="name" /></label>
       <label>Nome utente<input id="username" value={form.username} onChange={set('username')} required pattern="[a-zA-Z0-9_]{3,20}" title="Da 3 a 20 caratteri: lettere, numeri, _" autoCapitalize="none" placeholder="es. mario_trader" /></label>
       <label>Email<input id="email" type="email" value={form.email} onChange={set('email')} required autoComplete="email" /></label>

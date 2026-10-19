@@ -60,7 +60,7 @@ Ti serve: un server Linux (Ubuntu va benissimo) con almeno 2 GB di RAM, raggiung
    docker compose up -d --build
    ```
    La prima volta ci mette qualche minuto. Il certificato HTTPS arriva da solo.
-7. **Apri il sito** dal telefono e iscriviti per primo con l'email messa in `OWNER_EMAIL`: diventi il proprietario.
+7. **Apri il sito** dal telefono e iscriviti con l'email messa in `OWNER_EMAIL`: diventi il proprietario. Chi usa un'email di `ADMIN_EMAILS` diventa amministratore; tutti gli altri sono membri, anche chi si iscrive per primo.
 
 Comandi utili: `docker compose logs -f api` (vedere cosa succede), `docker compose down` (spegnere), `git pull && docker compose up -d --build` (aggiornare).
 

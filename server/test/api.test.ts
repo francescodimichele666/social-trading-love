@@ -8,6 +8,8 @@ process.env.MAIL_TEST = '1';
 process.env.PUSH = 'false';
 process.env.RECORDINGS = 'true';
 process.env.RECORDINGS_DIR = '/tmp/stl-test-recordings';
+process.env.OWNER_EMAIL = 'francesco@example.com';
+process.env.ADMIN_EMAILS = 'lorenzo@example.com';
 
 const { pool } = await import('../src/db.js');
 const { migrate } = await import('../src/migrate.js');
@@ -64,12 +66,13 @@ test('verifica età', () => {
   assert.equal(isAdult('2008-10-16', new Date('2026-10-16')), true);
 });
 
-test('il primo iscritto diventa proprietario e amministratore', async () => {
+test("l'email del proprietario diventa proprietario e amministratore", async () => {
   const rules = await call('GET', '/api/rules');
-  assert.equal(rules.body.firstUser, true);
+  assert.equal(rules.body.firstUser, undefined);
   const res = await call('POST', '/api/register', undefined, person('francesco'));
   assert.equal(res.status, 201);
   assert.equal(res.body.user.role, 'admin');
+  assert.equal(res.body.user.isOwner, true);
   admin = res.body.token;
 });
 
@@ -753,4 +756,25 @@ test('pagina di presentazione: numeri e prossime Live senza accesso', async () =
   const item = res.body.upcoming.find((r: any) => r.title === 'Domande per chi inizia');
   assert.equal(item.host.displayName, 'ANNA');
   assert.equal(JSON.stringify(res.body).includes('@example.com'), false, 'nessuna email');
+});
+
+test('solo le email scelte diventano amministratori, mai chi si iscrive e basta', async () => {
+  const { config } = await import('../src/config.js');
+  const { syncStaff } = await import('../src/staff.js');
+  const lorenzo = await call('POST', '/api/register', undefined, person('lorenzo'));
+  assert.equal(lorenzo.body.user.role, 'admin');
+  assert.equal(lorenzo.body.user.isOwner, false);
+  const ugo = await call('POST', '/api/register', undefined, person('ugo'));
+  assert.equal(ugo.body.user.role, 'member');
+
+  // Un'email aggiunta dopo: all'avvio l'account già iscritto prende il ruolo.
+  config.adminEmails.push('ugo@example.com');
+  await syncStaff();
+  assert.equal((await call('GET', '/api/me', ugo.body.token)).body.user.role, 'admin');
+
+  // Se il proprietario cambia email in .env, il posto passa a quell'account e il vecchio torna membro.
+  config.ownerEmail = 'ugo@example.com';
+  await syncStaff();
+  const { rows } = await pool.query(`SELECT username, role, is_owner FROM users WHERE username IN ('francesco', 'ugo') ORDER BY username`);
+  assert.deepEqual(rows.map((r) => [r.username, r.role, r.is_owner]), [['francesco', 'member', false], ['ugo', 'admin', true]]);
 });

@@ -68,7 +68,7 @@ Lo script crea le password segrete, apre le porte nel firewall di Windows e acce
 ## Passo 7. Prima iscrizione: sei il proprietario
 
 1. Dal telefono, **con i dati mobili e non con il wifi di casa**, apri `https://tradinglove.duckdns.org`.
-2. Premi **Iscriviti gratis** e usa **la stessa email** messa nello script: diventi il proprietario. Nessun altro può prendere quel posto.
+2. Premi **Iscriviti gratis** e usa **la stessa email** messa nello script: diventi il proprietario. Nessun altro può prendere quel posto: chi si iscrive per primo non diventa amministratore. Gli amministratori iniziali sono le email scritte in `ADMIN_EMAILS` nel file `.env` (separate da una virgola).
 3. Dal menu del browser scegli **"Aggiungi a schermata Home"**: da quel momento il social si apre come un'app.
 4. Dal tuo profilo tocca **Porta un amico** e manda il link alle prime persone.
 

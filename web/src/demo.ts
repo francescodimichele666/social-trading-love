@@ -287,7 +287,7 @@ export async function demoApi(path: string, method: string, body: any): Promise<
     Object.assign(c, { presetKey: p.key, title: p.title, description: p.description, rule: p.rule, emoji: p.emoji, requiredDays: body.requiredDays ?? 5 });
     return { challenge: describeChallenge(c) };
   }
-  if (route === '/rules') return { version: 'anteprima', rules: RULES, firstUser: false };
+  if (route === '/rules') return { version: 'anteprima', rules: RULES };
   if (route === '/login' || route === '/register') return { token: 'demo', user: user(ME) };
   if (route === '/me' && method === 'PATCH') return { user: Object.assign(user(ME), body) };
   if (route === '/me') {
