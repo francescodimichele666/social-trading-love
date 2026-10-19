@@ -72,7 +72,7 @@ Lo script crea le password segrete, apre le porte nel firewall di Windows e acce
 3. Dal menu del browser scegli **"Aggiungi a schermata Home"**: da quel momento il social si apre come un'app.
 4. Dal tuo profilo tocca **Porta un amico** e manda il link alle prime persone.
 
-Come proprietario sei l'unico che può nominare o togliere amministratori. Per farlo apri il profilo di una persona: in fondo trovi i pulsanti Membro, Moderatore, Amministratore. Gli amministratori che nomini possono nominare solo moderatori.
+Tu (proprietario) e Lorenzo (amministratore fondatore) siete gli unici che possono nominare o togliere amministratori. Per farlo apri il profilo di una persona: in fondo trovi i pulsanti Membro, Moderatore, Amministratore. Gli amministratori che nomini possono nominare solo moderatori.
 
 ## Problemi comuni
 
