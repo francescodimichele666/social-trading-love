@@ -21,6 +21,7 @@ const PATHS: Record<string, string> = {
   gift: 'M4 11h16v9H4zM3 7h18v4H3zM12 7v13M12 7c-1.5-3-5-3-5-1s3 1 5 1c2 0 5 1 5-1s-3.5-2-5 1',
   calendar: 'M4 6h16v14H4zM4 10h16M9 3v4M15 3v4',
   check: 'M5 12l5 5 9-10',
+  expand: 'M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5',
   trend: 'M3 17l6-6 4 4 8-8M15 7h6v6',
   play: 'M8 5.5v13a1 1 0 0 0 1.5.9l10-6.5a1 1 0 0 0 0-1.8l-10-6.5A1 1 0 0 0 8 5.5z',
   sound: 'M4 9h4l5-4v14l-5-4H4zM16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12',

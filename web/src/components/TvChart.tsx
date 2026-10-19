@@ -4,9 +4,19 @@ import Icon from './Icon';
 
 // Grafico TradingView di uno strumento. Si carica solo quando la persona tocca il pulsante
 // (oppure subito se "auto" e ha già detto sì una volta): prima nessun dato va a TradingView.
-export default function TvChart({ symbol, market, auto = false, height = 360 }: { symbol: string; market?: string; auto?: boolean; height?: number }) {
+export default function TvChart({ symbol, market, auto = false, height = 360 }: { symbol: string; market?: string; auto?: boolean; height?: number | string }) {
   const tv = tvSymbol(symbol, market);
   const [open, setOpen] = useState(auto && tvConsent());
+  // A tutto schermo: lo stesso grafico si allarga, senza ricaricarsi.
+  const [big, setBig] = useState(false);
+
+  useEffect(() => {
+    if (!big) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setBig(false); };
+    document.addEventListener('keydown', onKey);
+    document.body.classList.add('no-scroll');
+    return () => { document.removeEventListener('keydown', onKey); document.body.classList.remove('no-scroll'); };
+  }, [big]);
   const box = useRef<HTMLDivElement>(null);
 
   useEffect(() => { if (auto && tvConsent()) setOpen(true); }, [auto, tv]);
@@ -38,8 +48,13 @@ export default function TvChart({ symbol, market, auto = false, height = 360 }: 
     );
   }
   return (
-    <div className="tv-chart">
-      <div ref={box} className="tradingview-widget-container" style={{ height }} />
+    <div className={`tv-chart ${big ? 'full' : ''}`}>
+      <div className="tv-tools">
+        <button type="button" className="btn small ghost" onClick={() => setBig(!big)}>
+          <Icon name={big ? 'close' : 'expand'} size={16} /> {big ? 'Chiudi' : 'Ingrandisci'}
+        </button>
+      </div>
+      <div ref={box} className="tradingview-widget-container" style={{ height: big ? undefined : height }} />
       <a className="tv-credit" href={`https://it.tradingview.com/symbols/${encodeURIComponent(tv.replace(':', '-'))}/`} target="_blank" rel="noopener nofollow noreferrer">
         Grafico di {tv} su TradingView
       </a>

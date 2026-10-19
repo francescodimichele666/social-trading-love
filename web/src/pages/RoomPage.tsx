@@ -214,7 +214,8 @@ function LiveChart({ roomId, symbol, isHost, onChange }: { roomId: number; symbo
         </form>
       )}
       {error && <p className="error">{error}</p>}
-      {symbol && <TvChart key={symbol} symbol={symbol} auto height={380} />}
+      {symbol && <p className="muted small live-chart-note">{isHost ? `Tutti i presenti vedono il grafico di ${symbol}. Ognuno può ingrandirlo o cambiare il periodo sul proprio schermo.` : `Grafico scelto da chi conduce: ${symbol}`}</p>}
+      {symbol && <TvChart key={symbol} symbol={symbol} auto height="min(62vh, 560px)" />}
     </section>
   );
 }

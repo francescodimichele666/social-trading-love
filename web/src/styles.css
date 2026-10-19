@@ -638,3 +638,8 @@ a.tag { cursor: pointer; }
 .live-chart { display: grid; gap: 10px; padding: 0 16px 12px; }
 .live-chart-form { gap: 8px; flex-wrap: wrap; }
 .live-chart-form input { flex: 1 1 200px; width: auto; }
+.tv-tools { display: flex; justify-content: flex-end; }
+.tv-chart.full { position: fixed; inset: 0; z-index: 80; background: var(--ink); padding: calc(10px + env(safe-area-inset-top, 0px)) 10px calc(10px + env(safe-area-inset-bottom, 0px)); grid-template-rows: auto 1fr auto; margin: 0; }
+.tv-chart.full .tradingview-widget-container { height: 100%; }
+body.no-scroll { overflow: hidden; }
+.live-chart-note { margin: 0; }
